@@ -21,6 +21,7 @@ const weatherIcon = new L.Icon({
 export default function Cuaca() {
 
   const [cuacaList, setCuacaList] = useState([]);
+  const [selectedWilayah, setSelectedWilayah] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,7 +44,11 @@ export default function Cuaca() {
 
         const hasil = data.data.map((item) => {
 
-          const weather = item.cuaca?.[0]?.[0];
+          const prakiraan =
+            item.cuaca?.[0] || [];
+
+          const current =
+            prakiraan[0] || {};
 
           return {
 
@@ -53,19 +58,19 @@ export default function Cuaca() {
             lat: Number(item.lokasi?.lat),
             lon: Number(item.lokasi?.lon),
 
-            suhu: weather?.t,
-            cuaca: weather?.weather_desc,
+            suhu: current?.t,
+            cuaca: current?.weather_desc,
 
-            kelembapan: weather?.hu,
-            angin: weather?.ws,
+            kelembapan: current?.hu,
+            angin: current?.ws,
 
-            waktu: weather?.local_datetime,
+            waktu: current?.local_datetime,
+
+            prakiraan,
 
           };
 
         });
-
-        console.log("HASIL:", hasil);
 
         setCuacaList(hasil);
 
@@ -100,21 +105,18 @@ export default function Cuaca() {
       >
 
         <div
-          className="
-            position-relative
-            overflow-hidden
-            rounded-5
-            shadow-sm
-          "
+          className="rounded-5 overflow-hidden"
           style={{
-            background: "rgba(255,255,255,0.85)",
-            backdropFilter: "blur(16px)",
-            border: "1px solid rgba(0,0,0,0.06)",
+            background: "rgba(255,255,255,0.92)",
+            border:
+              "1px solid rgba(0,0,0,0.06)",
+            boxShadow:
+              "0 10px 40px rgba(15,23,42,0.06)",
           }}
         >
 
           {/* HEADER */}
-          <div className="p-4 p-md-5">
+          <div className="p-4 p-md-5 pb-0">
 
             <div className="d-flex justify-content-between align-items-start flex-wrap gap-4">
 
@@ -129,7 +131,7 @@ export default function Cuaca() {
                     fontSize: "13px",
                   }}
                 >
-                  BMKG REALTIME WEATHER
+                  BMKG WEATHER MONITORING
                 </p>
 
                 <h1
@@ -146,19 +148,18 @@ export default function Cuaca() {
                   className="mb-0"
                   style={{
                     color: "#64748b",
-                    maxWidth: "720px",
+                    maxWidth: "760px",
                     lineHeight: "1.8",
                   }}
                 >
-                  Monitoring realtime kondisi cuaca
+                  Monitoring prakiraan cuaca realtime
                   seluruh wilayah Kota Semarang
                   berbasis data BMKG dengan
-                  visualisasi peta interaktif.
+                  visualisasi interaktif.
                 </p>
 
               </div>
 
-              {/* CARD INFO */}
               <div
                 className="rounded-4 px-4 py-3"
                 style={{
@@ -166,8 +167,6 @@ export default function Cuaca() {
                   border:
                     "1px solid rgba(0,0,0,0.06)",
                   minWidth: "180px",
-                  boxShadow:
-                    "0 10px 30px rgba(15,23,42,0.06)",
                 }}
               >
 
@@ -194,188 +193,481 @@ export default function Cuaca() {
 
           </div>
 
-          {/* MAP */}
-          <div className="px-4 pb-4">
+          {/* CONTENT */}
+          <div className="p-4">
 
-            <div
-              className="overflow-hidden rounded-5 position-relative"
-              style={{
-                border:
-                  "1px solid rgba(0,0,0,0.06)",
-              }}
-            >
+            <div className="row g-4">
 
-              {/* OVERLAY */}
-              <div
-                className="position-absolute top-0 start-0 w-100"
-                style={{
-                  height: "120px",
-                  zIndex: 999,
-                  background:
-                    "linear-gradient(to bottom, rgba(255,255,255,0.9), transparent)",
-                  pointerEvents: "none",
-                }}
-              />
-
-              {loading ? (
+              {/* MAP */}
+              <div className="col-lg-8">
 
                 <div
-                  className="d-flex align-items-center justify-content-center"
+                  className="overflow-hidden rounded-5"
                   style={{
-                    height: "700px",
-                    background: "#f8fafc",
+                    border:
+                      "1px solid rgba(0,0,0,0.06)",
                   }}
                 >
 
-                  <div className="text-center">
+                  {loading ? (
 
                     <div
-                      className="spinner-border text-info mb-3"
-                      role="status"
-                    />
-
-                    <p
-                      className="mb-0"
+                      className="d-flex align-items-center justify-content-center"
                       style={{
-                        color: "#64748b",
+                        height: "700px",
                       }}
                     >
-                      Loading data cuaca realtime...
-                    </p>
 
-                  </div>
-
-                </div>
-
-              ) : (
-
-                <MapContainer
-                  center={[-6.9667, 110.4167]}
-                  zoom={11}
-                  style={{
-                    height: "560px",
-                    width: "100%",
-                  }}
-                >
-
-                  <TileLayer
-                    attribution='&copy; OpenStreetMap contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-
-                  {cuacaList.map((item, index) => (
-
-                    <Marker
-                      key={index}
-                      position={[
-                        item.lat,
-                        item.lon,
-                      ]}
-                      icon={weatherIcon}
-                    >
-
-                      <Popup>
+                      <div className="text-center">
 
                         <div
+                          className="spinner-border text-info mb-3"
+                          role="status"
+                        />
+
+                        <p
                           style={{
-                            minWidth: "230px",
+                            color: "#64748b",
                           }}
                         >
+                          Loading data cuaca...
+                        </p>
 
-                          <div className="d-flex align-items-center gap-2 mb-2">
+                      </div>
+
+                    </div>
+
+                  ) : (
+
+                    <MapContainer
+                      center={[-6.9667, 110.4167]}
+                      zoom={11}
+                      style={{
+                        height: "750px",
+                        width: "100%",
+                      }}
+                    >
+
+                      <TileLayer
+                        attribution='&copy; OpenStreetMap contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+
+                      {cuacaList.map((item, index) => (
+
+                        <Marker
+                          key={index}
+                          position={[
+                            item.lat,
+                            item.lon,
+                          ]}
+                          icon={weatherIcon}
+                        >
+
+                          <Popup>
 
                             <div
                               style={{
-                                width: "12px",
-                                height: "12px",
-                                borderRadius: "999px",
-                                background: "#0ea5e9",
-                              }}
-                            />
-
-                            <span
-                              style={{
-                                fontWeight: "560px",
-                                fontSize: "16px",
-                                color: "#0f172a",
+                                minWidth: "220px",
                               }}
                             >
-                              {item.desa}
-                            </span>
 
-                          </div>
+                              <h6
+                                className="fw-bold mb-1"
+                              >
+                                {item.desa}
+                              </h6>
 
-                          <small
-                            style={{
-                              color: "#64748b",
-                            }}
-                          >
-                            Kecamatan {item.kecamatan}
-                          </small>
+                              <small
+                                style={{
+                                  color: "#64748b",
+                                }}
+                              >
+                                Kecamatan {item.kecamatan}
+                              </small>
 
-                          <div className="mt-3">
+                              <div className="mt-3">
 
-                            <div className="d-flex justify-content-between mb-2">
+                                <div className="d-flex justify-content-between mb-2">
 
-                              <span>
-                                🌤️ Cuaca
-                              </span>
+                                  <span>
+                                    🌤️ Cuaca
+                                  </span>
 
-                              <strong>
-                                {item.cuaca}
-                              </strong>
+                                  <strong>
+                                    {item.cuaca}
+                                  </strong>
+
+                                </div>
+
+                                <div className="d-flex justify-content-between mb-2">
+
+                                  <span>
+                                    🌡️ Suhu
+                                  </span>
+
+                                  <strong>
+                                    {item.suhu}°C
+                                  </strong>
+
+                                </div>
+
+                                <div className="d-flex justify-content-between">
+
+                                  <span>
+                                    💧 Kelembapan
+                                  </span>
+
+                                  <strong>
+                                    {item.kelembapan}%
+                                  </strong>
+
+                                </div>
+
+                              </div>
 
                             </div>
 
-                            <div className="d-flex justify-content-between mb-2">
+                          </Popup>
 
-                              <span>
-                                🌡️ Suhu
-                              </span>
+                        </Marker>
+
+                      ))}
+
+                    </MapContainer>
+
+                  )}
+
+                </div>
+
+              </div>
+
+              {/* SIDEBAR */}
+              <div className="col-lg-4">
+
+                <div
+                  className="rounded-5 p-4 h-100"
+                  style={{
+                    background: "#ffffff",
+                    border:
+                      "1px solid rgba(0,0,0,0.06)",
+                  }}
+                >
+
+                  <div className="d-flex justify-content-between align-items-center mb-4">
+
+                    <h5
+                      className="fw-bold mb-0"
+                      style={{
+                        color: "#0f172a",
+                      }}
+                    >
+                      Data Wilayah
+                    </h5>
+
+                    <span
+                      className="badge rounded-pill text-bg-info"
+                    >
+                      BMKG
+                    </span>
+
+                  </div>
+
+                  {/* TABLE */}
+                  <div
+                    style={{
+                      maxHeight: "220px",
+                      overflowY: "auto",
+                    }}
+                  >
+
+                    <table className="table align-middle">
+
+                      <thead>
+
+                        <tr>
+
+                          <th>
+                            Wilayah
+                          </th>
+
+                          <th>
+                            Suhu
+                          </th>
+
+                          <th>
+                            Aksi
+                          </th>
+
+                        </tr>
+
+                      </thead>
+
+                      <tbody>
+
+                        {cuacaList.map((item, index) => (
+
+                          <tr key={index}>
+
+                            <td>
+
+                              <div
+                                className="fw-semibold"
+                              >
+                                {item.desa}
+                              </div>
+
+                              <small
+                                className="text-secondary"
+                              >
+                                {item.kecamatan}
+                              </small>
+
+                            </td>
+
+                            <td>
 
                               <strong>
                                 {item.suhu}°C
                               </strong>
 
+                            </td>
+
+                            <td>
+
+                              <button
+                                className={`btn btn-sm rounded-pill ${
+                                  selectedWilayah?.desa === item.desa
+                                    ? "btn-primary"
+                                    : "btn-outline-primary"
+                                }`}
+                                onClick={() =>
+                                  setSelectedWilayah(item)
+                                }
+                              >
+                                Lihat
+                              </button>
+
+                            </td>
+
+                          </tr>
+
+                        ))}
+
+                      </tbody>
+
+                    </table>
+
+                  </div>
+
+                  {/* DETAIL PRAKIRAAN */}
+                  {selectedWilayah ? (
+
+                    <div className="mt-4">
+
+                      <div className="mb-3">
+
+                        <h5
+                          className="fw-bold mb-1"
+                          style={{
+                            color: "#0f172a",
+                          }}
+                        >
+                          {selectedWilayah.desa}
+                        </h5>
+
+                        <small
+                          style={{
+                            color: "#64748b",
+                          }}
+                        >
+                          Kecamatan{" "}
+                          {selectedWilayah.kecamatan}
+                        </small>
+
+                      </div>
+
+                      {/* CARD SLIDER */}
+                      <div
+                        className="d-flex gap-3 overflow-auto pb-2"
+                        style={{
+                          scrollSnapType: "x mandatory",
+                        }}
+                      >
+
+                        {selectedWilayah.prakiraan.map(
+                          (jam, index) => (
+
+                            <div
+                              key={index}
+                              className="flex-shrink-0 rounded-4 p-3"
+                              style={{
+                                width: "240px",
+                                background:
+                                  "linear-gradient(to bottom right, #ffffff, #f8fafc)",
+                                border:
+                                  "1px solid rgba(0,0,0,0.06)",
+                                scrollSnapAlign:
+                                  "start",
+                                boxShadow:
+                                  "0 4px 20px rgba(15,23,42,0.05)",
+                              }}
+                            >
+
+                              <div className="mb-3">
+
+                                <small
+                                  style={{
+                                    color: "#64748b",
+                                  }}
+                                >
+                                  Waktu
+                                </small>
+
+                                <div
+                                  className="fw-bold"
+                                  style={{
+                                    color: "#0f172a",
+                                  }}
+                                >
+                                  {jam.local_datetime}
+                                </div>
+
+                              </div>
+
+                              <div
+                                className="rounded-4 p-3 mb-3"
+                                style={{
+                                  background:
+                                    "#eff6ff",
+                                }}
+                              >
+
+                                <div
+                                  className="fw-semibold mb-1"
+                                  style={{
+                                    color: "#0369a1",
+                                  }}
+                                >
+                                  🌤️ {jam.weather_desc}
+                                </div>
+
+                                <div
+                                  style={{
+                                    fontSize: "32px",
+                                    fontWeight: "700",
+                                    color: "#0f172a",
+                                  }}
+                                >
+                                  {jam.t}°C
+                                </div>
+
+                              </div>
+
+                              <div className="d-flex justify-content-between mb-2">
+
+                                <span
+                                  style={{
+                                    color: "#64748b",
+                                  }}
+                                >
+                                  Kelembapan
+                                </span>
+
+                                <strong>
+                                  {jam.hu}%
+                                </strong>
+
+                              </div>
+
+                              <div className="d-flex justify-content-between mb-2">
+
+                                <span
+                                  style={{
+                                    color: "#64748b",
+                                  }}
+                                >
+                                  Angin
+                                </span>
+
+                                <strong>
+                                  {jam.ws} km/jam
+                                </strong>
+
+                              </div>
+
+                              <div className="d-flex justify-content-between">
+
+                                <span
+                                  style={{
+                                    color: "#64748b",
+                                  }}
+                                >
+                                  Jarak Pandang
+                                </span>
+
+                                <strong>
+                                  {jam.vs_text || "-"}
+                                </strong>
+
+                              </div>
+
                             </div>
 
-                            <div className="d-flex justify-content-between mb-2">
+                          )
+                        )}
 
-                              <span>
-                                💧 Kelembapan
-                              </span>
+                      </div>
 
-                              <strong>
-                                {item.kelembapan}%
-                              </strong>
+                    </div>
 
-                            </div>
+                  ) : (
 
-                            <div className="d-flex justify-content-between">
+                    <div
+                      className="mt-4 text-center py-5 rounded-4"
+                      style={{
+                        background: "#f8fafc",
+                        border:
+                          "1px dashed rgba(0,0,0,0.1)",
+                      }}
+                    >
 
-                              <span>
-                                🌬️ Angin
-                              </span>
+                      <div
+                        style={{
+                          fontSize: "40px",
+                        }}
+                      >
+                        🌤️
+                      </div>
 
-                              <strong>
-                                {item.angin} km/jam
-                              </strong>
+                      <h6
+                        className="fw-bold mt-3"
+                        style={{
+                          color: "#0f172a",
+                        }}
+                      >
+                        Pilih Wilayah
+                      </h6>
 
-                            </div>
+                      <p
+                        className="mb-0"
+                        style={{
+                          color: "#64748b",
+                          fontSize: "14px",
+                        }}
+                      >
+                        Klik tombol "Lihat"
+                        pada tabel untuk melihat
+                        prakiraan cuaca per jam.
+                      </p>
 
-                          </div>
+                    </div>
 
-                        </div>
+                  )}
 
-                      </Popup>
+                </div>
 
-                    </Marker>
-
-                  ))}
-
-                </MapContainer>
-
-              )}
+              </div>
 
             </div>
 
