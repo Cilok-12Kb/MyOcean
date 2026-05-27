@@ -257,9 +257,32 @@ class SyncBMKGWeather extends Command
                     $item =
                         $json['data'][0];
 
-                    $prakiraan =
-                        $item['cuaca'][0] ?? [];
+                    $prakiraan = [];
 
+                    foreach (($item['cuaca'] ?? []) as $hari) {
+
+                        $prakiraan = array_merge(
+                            $prakiraan,
+                            $hari
+                        );
+
+                    }
+
+                    $item = $json['data'][0];
+
+                    // GABUNG SEMUA PRAKIRAAN
+                    $prakiraan = [];
+
+                    foreach (($item['cuaca'] ?? []) as $hari) {
+
+                        $prakiraan = array_merge(
+                            $prakiraan,
+                            $hari
+                        );
+
+                    }
+
+                    // CURRENT WEATHER
                     $current =
                         $prakiraan[0] ?? [];
 

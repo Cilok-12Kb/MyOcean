@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Dashboard from "../pages/Public/Dashboard";
 import PasangSurut from "../pages/Public/PasangSurut";
+//import Cuaca from "../pages/Public/Cuaca";
 import Cuaca from "../pages/Public/Cuaca";
 import Peta from "../pages/Public/Peta";
 import PotensiRob from "../pages/Public/PotensiRob";
