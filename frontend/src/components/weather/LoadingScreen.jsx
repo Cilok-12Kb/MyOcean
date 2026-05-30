@@ -1,6 +1,7 @@
 export default function LoadingScreen() {
 
   return (
+
     <div
       className="d-flex align-items-center justify-content-center"
       style={{
@@ -9,6 +10,7 @@ export default function LoadingScreen() {
         background: "#ffffff",
       }}
     >
+
       <div className="text-center">
 
         <div
@@ -16,15 +18,14 @@ export default function LoadingScreen() {
           role="status"
         />
 
-        <p
-          style={{
-            color: "#64748b",
-          }}
-        >
+        <p style={{ color: "#64748b" }}>
           Loading data cuaca...
         </p>
 
       </div>
+
     </div>
+
   );
+
 }

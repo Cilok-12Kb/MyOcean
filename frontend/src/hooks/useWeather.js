@@ -1,82 +1,72 @@
-import { useEffect, useMemo, useState } from "react";
-
-import { getWeatherData } from "../services/weatherService";
-
-import {
-  formatWeatherData,
-  filterWeatherData,
-} from "../utils/weatherHelpers";
+import { useEffect, useState } from "react";
 
 export default function useWeather() {
 
-  const [loading, setLoading] = useState(true);
-
-  const [weatherData, setWeatherData] = useState([]);
-
   const [countdown, setCountdown] = useState(60);
-
+  const [cuacaList, setCuacaList] = useState([]);
   const [lastUpdate, setLastUpdate] = useState(null);
-
-  const [selectedWilayah, setSelectedWilayah] = useState(null);
-
-  const [searchKelurahan, setSearchKelurahan] = useState("");
-
-  const [filterKecamatan, setFilterKecamatan] =
-    useState("Seluruh Kecamatan");
-    
-  const fetchWeather = async () => {
-
-    try {
-
-      const response = await getWeatherData();
-
-      if (!response.data) {
-        return;
-      }
-
-      const formatted = formatWeatherData(response.data);
-
-      setWeatherData(formatted);
-
-      setLastUpdate(
-        new Date().toLocaleString("id-ID", {
-          dateStyle: "medium",
-          timeStyle: "medium",
-        })
-      );
-
-      setCountdown(60);
-
-    } catch (error) {
-
-      console.error(error);
-
-    } finally {
-
-      setLoading(false);
-
-    }
-  };
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
 
-    fetchWeather();
+    const fetchCuaca = async () => {
+
+      try {
+
+        const response = await fetch(
+          "http://127.0.0.1:8000/api/cuaca-semarang"
+        );
+
+        const data = await response.json();
+
+        console.log("DATA BMKG:", data);
+
+        if (!data.data) return;
+
+        const hasil = data.data.map((item) => ({
+          desa: item.desa,
+          kecamatan: item.kecamatan,
+          lat: parseFloat(item.lat),
+          lon: parseFloat(item.lon),
+          suhu: item.t,
+          cuaca: item.weather_desc,
+          kelembapan: item.hu,
+          angin: item.ws,
+          waktu: item.local_datetime,
+          prakiraan: item.prakiraan || [],
+        }));
+
+        setCuacaList(hasil);
+
+        setLastUpdate(
+          new Date().toLocaleString("id-ID", {
+            dateStyle: "medium",
+            timeStyle: "medium",
+          })
+        );
+
+        setCountdown(60);
+
+      } catch (error) {
+
+        console.error(error);
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    };
+
+    fetchCuaca();
 
     const fetchInterval = setInterval(() => {
-      fetchWeather();
+      fetchCuaca();
     }, 60000);
 
     const countdownInterval = setInterval(() => {
-
-      setCountdown((prev) => {
-
-        if (prev <= 1) {
-          return 60;
-        }
-
-        return prev - 1;
-      });
-
+      setCountdown((prev) => (prev <= 1 ? 60 : prev - 1));
     }, 1000);
 
     return () => {
@@ -86,31 +76,11 @@ export default function useWeather() {
 
   }, []);
 
-  const filteredData = useMemo(() => {
-
-    return filterWeatherData(
-      weatherData,
-      searchKelurahan,
-      filterKecamatan
-    );
-
-  }, [
-    weatherData,
-    searchKelurahan,
-    filterKecamatan,
-  ]);
-
   return {
-    loading,
-    weatherData,
-    filteredData,
-    countdown,
+    cuacaList,
     lastUpdate,
-    selectedWilayah,
-    setSelectedWilayah,
-    searchKelurahan,
-    setSearchKelurahan,
-    filterKecamatan,
-    setFilterKecamatan,
+    loading,
+    countdown,
   };
+
 }

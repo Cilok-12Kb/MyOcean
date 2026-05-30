@@ -25,15 +25,22 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // Baru cek password
+        // Cek password
         if (!Hash::check($request->password, $user->password)) {
             return response()->json([
                 'message' => 'Password salah.'
             ], 401);
         }
 
+        // ── Cek apakah akun aktif ─────────────────────────────────────────────
+        if (!$user->is_active) {
+            return response()->json([
+                'message' => 'Akun Anda telah dinonaktifkan. Hubungi administrator.'
+            ], 403);
+        }
+
         // Cek role menggunakan Spatie
-        $roles = $user->getRoleNames(); // ['super_admin'] atau ['staff_bmkg']
+        $roles = $user->getRoleNames();
 
         if ($roles->isEmpty()) {
             return response()->json([
@@ -43,10 +50,13 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        // ── Update last_login_at ──────────────────────────────────────────────
+        $user->update(['last_login_at' => now()]);
+
         return response()->json([
-            'token'   => $token,
-            'role'    => $roles->first(),
-            'user'    => [
+            'token' => $token,
+            'role'  => $roles->first(),
+            'user'  => [
                 'id'      => $user->id,
                 'name'    => $user->name,
                 'email'   => $user->email,

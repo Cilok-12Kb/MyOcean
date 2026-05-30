@@ -140,7 +140,7 @@ export default function PublicNavbar() {
                     color: "#6b7280",
                   }}
                 >
-                  MONITORING BANJIR ROB
+                  MONITORING PASANG-SURUT
                 </div>
 
               </div>

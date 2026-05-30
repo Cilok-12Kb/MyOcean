@@ -2,21 +2,13 @@ export default function WeatherPopup({ item }) {
 
   return (
 
-    <div
-      style={{
-        minWidth: "220px",
-      }}
-    >
+    <div style={{ minWidth: "220px" }}>
 
       <h6 className="fw-bold mb-1">
         {item.desa}
       </h6>
 
-      <small
-        style={{
-          color: "#64748b",
-        }}
-      >
+      <small style={{ color: "#64748b" }}>
         Kecamatan {item.kecamatan}
       </small>
 
@@ -40,5 +32,7 @@ export default function WeatherPopup({ item }) {
       </div>
 
     </div>
+
   );
+
 }

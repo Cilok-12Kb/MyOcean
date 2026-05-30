@@ -26,6 +26,8 @@ class User extends Authenticatable
         'phone',    // ← tambah
         'jabatan',  // ← tambah
         'avatar',   // ← tambah sekalian untuk nanti
+        'is_active',      // ← tambah
+        'last_login_at',  // ← tambah
     ];
 
     /**

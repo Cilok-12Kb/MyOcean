@@ -1,10 +1,12 @@
 import { useState } from "react";
-import PublicNavbar from "../../components/PublicNavbar";
+import EndminTopbar from "../../components/EndminTopbar";
 
 import useWeather from "../../hooks/useWeather";
 import WeatherHeader from "../../components/weather/WeatherHeader";
 import WeatherMapView from "../../components/weather/WeatherMap";
 import WeatherSidebar from "../../components/weather/WeatherSidebar";
+import useWeatherRataRata   from "../../hooks/useWeatherRataRata";
+import WeatherSummaryBar    from "../../components/weather/WeatherSummaryBar";
 
 const KECAMATAN_LIST = [
   "Seluruh Kecamatan",
@@ -27,6 +29,7 @@ const KECAMATAN_LIST = [
 ];
 
 export default function Cuaca() {
+  const { rata, loading: loadingRata }                = useWeatherRataRata();
 
   const { cuacaList, lastUpdate, loading, countdown } = useWeather();
 
@@ -54,18 +57,20 @@ export default function Cuaca() {
 
     <>
 
-      <PublicNavbar />
+      <EndminTopbar />
 
       <div
-        className="min-vh-100 py-4 px-3 px-md-4"
+        className="min-vh-100 pb-4 px-3 px-md-4"
         style={{
           background: "linear-gradient(to bottom, #f8fafc, #eef2ff)",
+          paddingTop: "90px",
         }}
       >
 
         <div
           className="rounded-5 overflow-hidden"
           style={{
+            overflow: "clip",  // ganti overflow-hidden Bootstrap dengan ini
             background: "rgba(255,255,255,0.92)",
             border: "1px solid rgba(0,0,0,0.06)",
             boxShadow: "0 10px 40px rgba(15,23,42,0.06)",
@@ -77,6 +82,9 @@ export default function Cuaca() {
             totalWilayah={filteredCuaca.length}
             lastUpdate={lastUpdate}
           />
+
+          {/* ← Summary bar di sini, antara header dan konten */}
+          <WeatherSummaryBar rata={rata} loading={loadingRata} />
 
           {/* CONTENT */}
           <div className="p-4 pt-0" style={{ marginTop: "-20px" }}>

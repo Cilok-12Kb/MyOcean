@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { SuperAdminRoute } from "../components/SuperAdminRoute";
 
 import Dashboard from "../pages/Public/Dashboard";
 import PasangSurut from "../pages/Public/PasangSurut";
-//import Cuaca from "../pages/Public/Cuaca";
 import Cuaca from "../pages/Public/Cuaca";
 import Peta from "../pages/Public/Peta";
 import PotensiRob from "../pages/Public/PotensiRob";
@@ -10,16 +10,15 @@ import MarinMinamo from "../pages/Public/MarinMinamo";
 
 import Login from "../pages/Admin/Login";
 import AdminDashboard from "../pages/Admin/Dashboard";
-
-import ProtectedRoute from "../components/ProtectedRoute";
+import AdminProfil from "../pages/Admin/Profil";
+import AdminLayout from "../layouts/AdminLayout";
+import EndminCuaca from "../pages/Admin/Cuaca";
+import Pengguna from "../pages/Admin/Pengguna";
 
 export default function AppRoutes() {
-
   return (
     <BrowserRouter>
-
       <Routes>
-
         {/* PUBLIC */}
         <Route path="/" element={<Dashboard />} />
         <Route path="/Pasang-Surut" element={<PasangSurut />} />
@@ -28,23 +27,25 @@ export default function AppRoutes() {
         <Route path="/Potensi-Rob" element={<PotensiRob />} />
         <Route path="/marin-minamo" element={<MarinMinamo />} />
 
-        {/* ADMIN */}
-        <Route
-          path="/MyOcean-Endmin"
-          element={<Login />}
-        />
+        {/* ADMIN LOGIN */}
+        <Route path="/MyOcean-Endmin" element={<Login />} />
 
-        <Route
-          path="/ocean-dashboard"
-          element={
-            <ProtectedRoute>
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-
+        {/* ADMIN PANEL */}
+        <Route path="/ocean-dashboard" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="profil" element={<AdminProfil />} />
+          <Route path="Cuaca" element={<EndminCuaca />} />
+          <Route
+            path="/ocean-dashboard/pengguna"
+            element={
+              <SuperAdminRoute>
+                <Pengguna />
+              </SuperAdminRoute>
+            }
+          />
+          {/* tambah halaman lain di sini nanti */}
+        </Route>
       </Routes>
-
     </BrowserRouter>
   );
 }
