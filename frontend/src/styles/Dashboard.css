@@ -1,0 +1,288 @@
+.dashboard-page {
+  padding: 46px 64px;
+  background: #ffffff;
+  min-height: calc(100vh - 130px);
+}
+
+.dashboard-title {
+  margin: 0 0 28px;
+  font-size: 72px;
+  line-height: 1;
+  font-weight: 900;
+  color: #000;
+}
+
+.dashboard-frame {
+  width: 92%;
+  margin: 0 auto;
+  padding: 58px 76px;
+  background: #ffffff;
+  border-radius: 34px;
+  box-shadow: 14px 18px 24px rgba(0, 0, 0, 0.25);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 0.9fr 0.65fr 1.35fr;
+  grid-template-rows: 300px 300px;
+  gap: 26px 42px;
+}
+
+.dashboard-box {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 34px;
+  background: #36aef0;
+}
+
+.box-weather {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+}
+
+.box-map-weather {
+  grid-column: 2 / 4;
+  grid-row: 1 / 2;
+}
+
+.box-tide {
+  grid-column: 1 / 3;
+  grid-row: 2 / 3;
+}
+
+.box-rob {
+  grid-column: 3 / 4;
+  grid-row: 2 / 3;
+}
+
+.dashboard-box > * {
+  width: 100%;
+  height: 100%;
+}
+
+/* Kotak 1 */
+.dashboard-weather-card {
+  position: relative;
+  height: 100%;
+  padding: 28px;
+  color: white;
+  background: linear-gradient(155deg, #4aa9ff 0%, #62c9dd 100%);
+}
+
+.dashboard-weather-card h2 {
+  margin: 0 0 10px;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.weather-temp {
+  font-size: 64px;
+  line-height: 0.95;
+  font-weight: 300;
+}
+
+.dashboard-weather-card h3 {
+  margin: 12px 0 8px;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.dashboard-weather-card p {
+  margin: 2px 0;
+  font-size: 14px;
+}
+
+.dashboard-weather-card span {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.weather-icon-preview {
+  position: absolute;
+  right: 28px;
+  top: 34px;
+  width: 100px;
+  height: 90px;
+}
+
+.sun {
+  position: absolute;
+  top: 8px;
+  right: 26px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #ffd45a;
+}
+
+.cloud {
+  position: absolute;
+  background: white;
+  border-radius: 999px;
+}
+
+.cloud::before,
+.cloud::after {
+  content: "";
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+}
+
+.cloud-1 {
+  top: 38px;
+  right: 4px;
+  width: 68px;
+  height: 24px;
+}
+
+.cloud-1::before {
+  width: 34px;
+  height: 34px;
+  top: -17px;
+  left: 8px;
+}
+
+.cloud-1::after {
+  width: 42px;
+  height: 42px;
+  top: -22px;
+  right: 6px;
+}
+
+/* Kotak 2 */
+.box-map-weather > div {
+  height: 100% !important;
+  padding: 0 !important;
+  border-radius: 34px !important;
+  box-shadow: none !important;
+}
+
+.box-map-weather .leaflet-container {
+  height: 100% !important;
+  min-height: 300px;
+}
+
+/* Kotak 3 dan 4 */
+.dashboard-content-card {
+  height: 100%;
+  padding: 22px;
+  background: #36aef0;
+  color: white;
+}
+
+.dashboard-card-title {
+  margin-bottom: 16px;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.dashboard-table-wrapper,
+.rob-preview-list {
+  height: calc(100% - 42px);
+  overflow: auto;
+}
+
+.dashboard-mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  color: #0084e8;
+  border-radius: 18px;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.dashboard-mini-table thead {
+  background: #e9f0ff;
+}
+
+.dashboard-mini-table th,
+.dashboard-mini-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #8bc9ff;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.rob-preview-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  border-radius: 16px;
+}
+
+.rob-preview-item strong {
+  display: block;
+  font-size: 15px;
+}
+
+.rob-preview-item span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.rob-badge {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.rob-badge.tenang {
+  background: #d7fbe0;
+  color: #087f23;
+}
+
+.rob-badge.rendah {
+  background: #fff9c4;
+  color: #8a7200;
+}
+
+.rob-badge.sedang {
+  background: #ffe0b2;
+  color: #b45309;
+}
+
+.rob-badge.tinggi {
+  background: #ffcdd2;
+  color: #d50000;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-page {
+    padding: 28px 20px;
+  }
+
+  .dashboard-title {
+    font-size: 48px;
+  }
+
+  .dashboard-frame {
+    width: 100%;
+    padding: 28px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, 300px);
+  }
+
+  .box-weather,
+  .box-map-weather,
+  .box-tide,
+  .box-rob {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}

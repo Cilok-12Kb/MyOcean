@@ -182,15 +182,6 @@ export default function PublicNavbar() {
                 <li className="nav-item mx-1">
                   <Link
                     className="nav-link custom-nav-link"
-                    to="/Potensi-Rob"
-                  >
-                    Potensi Rob
-                  </Link>
-                </li>
-
-                <li className="nav-item mx-1">
-                  <Link
-                    className="nav-link custom-nav-link"
                     to="/Cuaca"
                   >
                     Cuaca
@@ -278,16 +269,6 @@ export default function PublicNavbar() {
                       onClick={() => setIsOpen(false)}
                     >
                       Peta
-                    </Link>
-                  </li>
-
-                  <li className="nav-item py-2">
-                    <Link
-                      className="nav-link text-dark fw-medium"
-                      to="/Potensi-Rob"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      Potensi Rob
                     </Link>
                   </li>
 

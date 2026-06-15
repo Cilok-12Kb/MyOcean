@@ -13,6 +13,7 @@ export default function WeatherMapView({
   filterKecamatan,
   setFilterKecamatan,
   kecamatanList,
+  onWeatherSelect,
 }) {
 
   return (
@@ -158,6 +159,11 @@ export default function WeatherMapView({
                 key={index}
                 position={[item.lat, item.lon]}
                 icon={getWeatherIcon(item.cuaca)}
+                eventHandlers={{
+                  click: () => {
+                    onWeatherSelect?.(item);
+                  },
+                }}
               >
 
                 <Popup>

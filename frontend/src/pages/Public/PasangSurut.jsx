@@ -3,6 +3,48 @@ import PublicNavbar from "../../components/PublicNavbar";
 import api from "../../services/api";
 import "../../styles/PasangSurut.css";
 
+const ROB_AREAS = [
+  "Tambakharjo",
+  "Tawangsari",
+  "Tawangmas",
+  "Panggung Lor",
+  "Bandarharjo",
+  "Tanjung Mas",
+  "Kemijen",
+  "Tambakrejo",
+  "Terboyo Kulon",
+  "Terboyo Wetan",
+  "Trimulyo",
+];
+
+const MSL_VALUE = 1.5;
+
+function normalizeText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getAreaName(item) {
+  return (
+    item.lokasi ||
+    item.desa ||
+    item.village ||
+    item.kelurahan ||
+    item.nama_wilayah ||
+    "-"
+  );
+}
+
+function getTideValue(item) {
+  return Number(item.tide_height || item.kenaikan_air || 0);
+}
+
+function getRobPotential(value) {
+  if (value >= 2.2) return "Tinggi";
+  if (value >= 1.8) return "Sedang";
+  if (value >= 1.5) return "Rendah";
+  return "Tenang";
+}
+
 function formatDateTime(value) {
   if (!value) return "-";
 
@@ -27,53 +69,70 @@ function getTodayLabel() {
 // GANTI BAGIAN INI DENGAN API MODEL PREDIKSI PASANG SURUT
 //-- START --//
 function TideChart({ data }) {
-  const maxHeight = 4;
-  const chartWidth = 1200;
-  const chartHeight = 420;
-  const paddingLeft = 80;
-  const paddingRight = 35;
-  const paddingTop = 45;
-  const paddingBottom = 70;
+  const chartData = data.slice(0, 24);
+  const maxHeight = 3;
+  const chartWidth = 1600;
+  const chartHeight = 520;
 
-  const chartInnerWidth = chartWidth - paddingLeft - paddingRight;
-  const chartInnerHeight = chartHeight - paddingTop - paddingBottom;
+  const paddingLeft = 85;
+  const paddingRight = 55;
+  const paddingTop = 60;
+  const paddingBottom = 90;
 
-  const points = data.map((item, index) => {
+  const innerWidth = chartWidth - paddingLeft - paddingRight;
+  const innerHeight = chartHeight - paddingTop - paddingBottom;
+
+  const toY = (value) =>
+    paddingTop + innerHeight - (value / maxHeight) * innerHeight;
+
+  const points = chartData.map((item, index) => {
+    const value = getTideValue(item);
     const x =
       paddingLeft +
-      (index * chartInnerWidth) / Math.max(data.length - 1, 1);
+      (index * innerWidth) / Math.max(chartData.length - 1, 1);
 
-    const y =
-      paddingTop +
-      chartInnerHeight -
-      (Number(item.tide_height) / maxHeight) * chartInnerHeight;
+    const hour = String(index + 1).padStart(2, "0") + ":00";
 
-    const hour = new Date(item.datetime).toLocaleTimeString("id-ID", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    return { x, y, hour, ...item };
+    return {
+      ...item,
+      x,
+      y: toY(value),
+      value,
+      hour,
+      manual: value + 0.03,
+      prediction: Math.max(value - 0.05, 0),
+    };
   });
 
-  const path = points
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+  const digitalPath = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
+    .join(" ");
+
+  const manualPath = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${toY(p.manual)}`)
+    .join(" ");
+
+  const predictionPath = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${toY(p.prediction)}`)
     .join(" ");
 
   return (
-    <div className="tide-chart-card">
-      <div className="chart-header">
-        <strong>Prediksi Pasang Surut Air Laut</strong>
+    <div className="analysis-chart-card">
+      <div className="analysis-card-header">
+        <h2>GRAFIK ANALISIS DATA</h2>
+        <button type="button">UNDUH GRAFIK (PNG)</button>
       </div>
 
-      <div className="chart-date">{getTodayLabel()}</div>
+      <h1 className="analysis-chart-title">
+        GRAFIK ANALISIS DATA - {getTodayLabel()}
+      </h1>
 
-      <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="tide-chart">
-        {[0, 1, 2, 3, 4].map((value) => {
-          const y =
-            paddingTop +
-            chartInnerHeight -
-            (value / maxHeight) * chartInnerHeight;
+      <svg
+        viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+        className="analysis-chart"
+      >
+        {[0, 0.5, 1, 1.5, 2, 2.5, 3].map((value) => {
+          const y = toY(value);
 
           return (
             <g key={value}>
@@ -82,10 +141,10 @@ function TideChart({ data }) {
                 y1={y}
                 x2={chartWidth - paddingRight}
                 y2={y}
-                className="chart-grid"
+                className="analysis-grid"
               />
-              <text x={35} y={y + 5} className="axis-label">
-                {value.toFixed(1)}
+              <text x={35} y={y + 5} className="analysis-axis-label">
+                {(value * 100).toFixed(0)}
               </text>
             </g>
           );
@@ -96,7 +155,7 @@ function TideChart({ data }) {
           y1={paddingTop}
           x2={paddingLeft}
           y2={chartHeight - paddingBottom}
-          className="axis-line"
+          className="analysis-axis-line"
         />
 
         <line
@@ -104,48 +163,61 @@ function TideChart({ data }) {
           y1={chartHeight - paddingBottom}
           x2={chartWidth - paddingRight}
           y2={chartHeight - paddingBottom}
-          className="axis-line"
+          className="analysis-axis-line"
         />
 
         <text
           x={22}
           y={chartHeight / 2}
-          className="axis-title-y"
           transform={`rotate(-90 22 ${chartHeight / 2})`}
+          className="analysis-axis-title"
         >
-          Prediksi Kenaikan Air Laut (m)
+          Ketinggian (cm)
         </text>
 
         <text
           x={chartWidth / 2}
-          y={chartHeight - 18}
-          className="axis-title-x"
+          y={chartHeight - 25}
+          className="analysis-axis-title"
         >
-          Waktu Prediksi Per Jam
+          Periode / Jam
         </text>
 
-        <path d={path} className="chart-line" fill="none" />
+        <line
+          x1={paddingLeft}
+          y1={toY(MSL_VALUE)}
+          x2={chartWidth - paddingRight}
+          y2={toY(MSL_VALUE)}
+          className="msl-line"
+        />
+
+        <path d={digitalPath} className="digital-area" />
+        <path d={digitalPath} className="digital-line" fill="none" />
+        <path d={manualPath} className="manual-line" fill="none" />
+        <path d={predictionPath} className="prediction-line" fill="none" />
 
         {points.map((point, index) => (
-          <g key={point.id}>
-            <circle cx={point.x} cy={point.y} r="5" className="chart-dot" />
+          <g key={point.id || index}>
+            <circle cx={point.x} cy={point.y} r="5" className="digital-dot" />
 
-            <text x={point.x - 16} y={point.y - 12} className="chart-label">
-              {point.tide_height}m
+            <text
+              x={point.x}
+              y={chartHeight - paddingBottom + 28}
+              textAnchor="middle"
+              className="analysis-x-label"
+            >
+              {index + 1}
             </text>
-
-            {index % 2 === 0 && (
-              <text
-                x={point.x - 18}
-                y={chartHeight - paddingBottom + 28}
-                className="x-axis-label"
-              >
-                {point.hour}
-              </text>
-            )}
           </g>
         ))}
       </svg>
+
+      <div className="analysis-legend">
+        <span><i className="legend-digital" /> Digital</span>
+        <span><i className="legend-manual" /> Manual</span>
+        <span><i className="legend-prediction" /> Prediksi</span>
+        <span><i className="legend-msl" /> MSL</span>
+      </div>
     </div>
   );
 }
@@ -161,18 +233,29 @@ function TideSummarySection({ data }) {
 
 function TideTable({ data }) {
   function exportCSV() {
-    const header = ["No", "Lokasi", "Pasang/Surut", "Kenaikan Air", "Tanggal dan Waktu"];
+    const header = [
+      "No",
+      "Lokasi",
+      "Pasang/Surut",
+      "Potensi Rob",
+      "Kenaikan Air",
+      "Tanggal dan Waktu",
+    ];
 
-    const rows = data.map((item, index) => [
-      index + 1,
-      item.lokasi,
-      item.status,
-      `${item.kenaikan_air} cm`,
-      `${formatDateTime(item.datetime)} WIB`,
-    ]);
+    const rows = data.map((item, index) => {
+      const value = getTideValue(item);
+
+      return [
+        index + 1,
+        getAreaName(item),
+        item.status,
+        getRobPotential(value),
+        `${value} m`,
+        `${formatDateTime(item.datetime)} WIB`,
+      ];
+    });
 
     const csv = [header, ...rows].map((row) => row.join(",")).join("\n");
-
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
 
@@ -198,21 +281,32 @@ function TideTable({ data }) {
               <th>#</th>
               <th>Lokasi</th>
               <th>Pasang/Surut</th>
+              <th>Potensi Rob</th>
               <th>Kenaikan Air</th>
               <th>Tanggal dan Waktu</th>
             </tr>
           </thead>
 
           <tbody>
-            {data.map((item, index) => (
-              <tr key={item.id}>
-                <td>{index + 1}</td>
-                <td>{item.lokasi}</td>
-                <td>{item.status}</td>
-                <td>{item.kenaikan_air} cm</td>
-                <td>{formatDateTime(item.datetime)} WIB</td>
-              </tr>
-            ))}
+            {data.map((item, index) => {
+              const value = getTideValue(item);
+              const potential = getRobPotential(value);
+
+              return (
+                <tr key={item.id || index}>
+                  <td>{index + 1}</td>
+                  <td>{getAreaName(item)}</td>
+                  <td>{item.status}</td>
+                  <td>
+                    <span className={`rob-badge ${potential.toLowerCase()}`}>
+                      {potential}
+                    </span>
+                  </td>
+                  <td>{value} m</td>
+                  <td>{formatDateTime(item.datetime)} WIB</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </section>
@@ -227,6 +321,9 @@ function PasangSurutContent() {
   async function fetchTideData() {
     try {
       const response = await api.get("/pasang-surut");
+
+      console.log("DATA PASANG SURUT:", response.data.data);
+
       setTideData(response.data.data || []);
     } catch (error) {
       console.error("Gagal mengambil data pasang surut:", error);

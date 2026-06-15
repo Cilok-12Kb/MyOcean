@@ -122,19 +122,28 @@ function PetaContent() {
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const ROB_AREAS = [
+    "Tambakharjo",
+    "Tawangsari",
+    "Tawangmas",
+    "Panggung Lor",
+    "Bandarharjo",
+    "Tanjung Mas",
+    "Kemijen",
+    "Tambakrejo",
+    "Terboyo Kulon",
+    "Terboyo Wetan",
+    "Trimulyo",
+  ];
+
   async function fetchMapData() {
     try {
       const response = await api.get("/cuaca-semarang");
 
       const filteredData = response.data.data.filter((item) => {
-        const lat = Number(item.lat);
-        const lon = Number(item.lon);
-
-        return (
-          lat >= SEMARANG_BOUNDS[0][0] &&
-          lat <= SEMARANG_BOUNDS[1][0] &&
-          lon >= SEMARANG_BOUNDS[0][1] &&
-          lon <= SEMARANG_BOUNDS[1][1]
+        return ROB_AREAS.some(
+          (area) =>
+            item.desa?.toLowerCase() === area.toLowerCase()
         );
       });
 

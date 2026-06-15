@@ -140,6 +140,179 @@
   width: 80px;
 }
 
+.analysis-chart-card {
+  width: 100%;
+  min-height: 660px;
+  padding: 34px 38px 28px;
+  background: #ffffff;
+  border: 1px solid #dbe5ef;
+  border-radius: 24px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.analysis-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.analysis-card-header h2 {
+  margin: 0;
+  padding-left: 18px;
+  border-left: 8px solid #003b73;
+  color: #003b73;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.analysis-card-header button {
+  padding: 14px 26px;
+  border: none;
+  border-radius: 8px;
+  background: #003b73;
+  color: #ffffff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.analysis-chart-title {
+  margin: 42px 0 22px;
+  text-align: center;
+  color: #003b73;
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.analysis-chart {
+  width: 100%;
+  height: 440px;
+}
+
+.analysis-grid {
+  stroke: rgba(120, 120, 120, 0.25);
+  stroke-width: 1;
+}
+
+.analysis-axis-line {
+  stroke: rgba(80, 80, 80, 0.45);
+  stroke-width: 1.4;
+}
+
+.analysis-axis-label,
+.analysis-x-label {
+  fill: #666;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.analysis-axis-title {
+  fill: #666;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.digital-area {
+  fill: rgba(16, 185, 129, 0.18);
+}
+
+.digital-line {
+  stroke: #10b981;
+  stroke-width: 5;
+}
+
+.manual-line {
+  stroke: #003b73;
+  stroke-width: 4;
+}
+
+.prediction-line {
+  stroke: #f59e0b;
+  stroke-width: 4;
+}
+
+.msl-line {
+  stroke: #ff0000;
+  stroke-width: 4;
+  stroke-dasharray: 8 6;
+}
+
+.digital-dot {
+  fill: #10b981;
+  stroke: #087f5b;
+  stroke-width: 2;
+}
+
+.analysis-legend {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  margin-top: 8px;
+  color: #666;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.analysis-legend span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.analysis-legend i {
+  width: 56px;
+  height: 18px;
+  display: inline-block;
+  border: 4px solid;
+}
+
+.legend-digital {
+  border-color: #10b981 !important;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.legend-manual {
+  border-color: #003b73 !important;
+  background: #eaf2fb;
+}
+
+.legend-prediction {
+  border-color: #f59e0b !important;
+  background: #fff7e6;
+}
+
+.legend-msl {
+  border-color: #ff0000 !important;
+  border-style: dashed !important;
+  background: transparent;
+}
+
+.rob-badge {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.rob-badge.tenang {
+  background: #d7fbe0;
+  color: #087f23;
+}
+
+.rob-badge.rendah {
+  background: #fff9c4;
+  color: #8a7200;
+}
+
+.rob-badge.sedang {
+  background: #ffe0b2;
+  color: #b45309;
+}
+
+.rob-badge.tinggi {
+  background: #ffcdd2;
+  color: #d50000;
+}
+
 @media (max-width: 1100px) {
   .tide-summary-section {
     grid-template-columns: 1fr;
