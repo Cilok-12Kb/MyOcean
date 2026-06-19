@@ -2,23 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PublicNavbar from "../../components/PublicNavbar";
 import WeatherMapView from "../../components/weather/WeatherMap";
+import WeatherSummaryBar from "../../components/weather/WeatherSummaryBar";
 import RobPotentialMap from "../../components/potensi_rob/RobPotentialMap";
+import useWeatherRataRata from "../../hooks/useWeatherRataRata";
 import api from "../../services/api";
 import "../../styles/Dashboard.css";
-
-const ROB_AREAS = [
-  "Tambakharjo",
-  "Tawangsari",
-  "Tawangmas",
-  "Panggung Lor",
-  "Bandarharjo",
-  "Tanjung Mas",
-  "Kemijen",
-  "Tambakrejo",
-  "Terboyo Kulon",
-  "Terboyo Wetan",
-  "Trimulyo",
-];
 
 function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
@@ -44,36 +32,29 @@ function formatTime(value) {
   });
 }
 
-function getAreaName(item) {
-  return item.lokasi || item.desa || item.kelurahan || "-";
-}
-
-function getTideValue(item) {
-  return Number(item.tide_height || item.kenaikan_air || 0);
-}
-
-function getRobPotential(value) {
-  if (value >= 2.2) return "Tinggi";
-  if (value >= 1.8) return "Sedang";
-  if (value >= 1.5) return "Rendah";
+// ── Helper rob (sesuai struktur baru: tinggi_rob, bukan tide_height) ──
+function getRobPotential(tinggiRob) {
+  if (tinggiRob >= 0.7) return "Tinggi";
+  if (tinggiRob >= 0.4) return "Sedang";
+  if (tinggiRob > 0)    return "Rendah";
   return "Tenang";
 }
 
-function getRobPotentialClass(value) {
-  if (value >= 2.2) return "tinggi";
-  if (value >= 1.8) return "sedang";
-  if (value >= 1.5) return "rendah";
+function getRobPotentialClass(tinggiRob) {
+  if (tinggiRob >= 0.7) return "tinggi";
+  if (tinggiRob >= 0.4) return "sedang";
+  if (tinggiRob > 0)    return "rendah";
   return "tenang";
 }
 
 /* ── Alert Banner ── */
-function RobAlertBanner({ tideData }) {
-  const highAlerts = tideData.filter((item) => getTideValue(item) >= 2.2);
-  const medAlerts = tideData.filter(
-    (item) => getTideValue(item) >= 1.8 && getTideValue(item) < 2.2
+function RobAlertBanner({ robData }) {
+  const highAlerts = robData.filter((item) => item.tinggi_rob >= 0.7);
+  const medAlerts  = robData.filter(
+    (item) => item.tinggi_rob >= 0.4 && item.tinggi_rob < 0.7
   );
 
-  if (tideData.length === 0) return null;
+  if (robData.length === 0) return null;
 
   const level =
     highAlerts.length > 0 ? "tinggi" : medAlerts.length > 0 ? "sedang" : null;
@@ -82,8 +63,8 @@ function RobAlertBanner({ tideData }) {
 
   const areas =
     level === "tinggi"
-      ? highAlerts.map(getAreaName)
-      : medAlerts.map(getAreaName);
+      ? highAlerts.map((i) => i.nama_wilayah)
+      : medAlerts.map((i) => i.nama_wilayah);
 
   return (
     <div className={`db-alert-banner db-alert-banner--${level}`}>
@@ -118,11 +99,11 @@ function RobAlertBanner({ tideData }) {
 }
 
 /* ── Summary Stats ── */
-function SummaryStats({ tideData, weatherData }) {
-  const maxTide = tideData.length
-    ? Math.max(...tideData.map(getTideValue))
+function SummaryStats({ robData, weatherData }) {
+  const maxRob = robData.length
+    ? Math.max(...robData.map((i) => i.tinggi_rob))
     : 0;
-  const highCount = tideData.filter((i) => getTideValue(i) >= 2.2).length;
+  const highCount = robData.filter((i) => i.tinggi_rob >= 0.7).length;
   const avgTemp = weatherData.length
     ? (weatherData.reduce((s, i) => s + Number(i.t || 0), 0) / weatherData.length).toFixed(1)
     : "-";
@@ -130,7 +111,7 @@ function SummaryStats({ tideData, weatherData }) {
   const stats = [
     {
       label: "Lokasi Dipantau",
-      value: tideData.length || "-",
+      value: robData.length || "-",
       unit: "titik",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -154,8 +135,8 @@ function SummaryStats({ tideData, weatherData }) {
       color: "red",
     },
     {
-      label: "Muka Air Maks",
-      value: maxTide.toFixed(2),
+      label: "Tinggi Rob Maks",
+      value: maxRob.toFixed(2),
       unit: "meter",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -259,13 +240,38 @@ function WeatherSection({
   filteredCuaca,
   loading,
   countdown,
-  searchKelurahan,
-  setSearchKelurahan,
-  filterKecamatan,
-  setFilterKecamatan,
-  kecamatanList,
+  rata,
+  loadingRata,
 }) {
-  const topItems = filteredCuaca.slice(0, 4);
+  const [slideIndex, setSlideIndex] = useState(0);
+
+  // Reset slide index kalau data cuaca berubah (misal abis fetch ulang)
+  useEffect(() => {
+    setSlideIndex(0);
+  }, [filteredCuaca.length]);
+
+  // Auto-slide tiap 3 detik
+  useEffect(() => {
+    if (filteredCuaca.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setSlideIndex((prev) => (prev + 1) % filteredCuaca.length);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [filteredCuaca.length]);
+
+  const current = filteredCuaca[slideIndex] || selectedWeather;
+
+  function goPrev() {
+    setSlideIndex((prev) =>
+      prev === 0 ? filteredCuaca.length - 1 : prev - 1
+    );
+  }
+
+  function goNext() {
+    setSlideIndex((prev) => (prev + 1) % filteredCuaca.length);
+  }
 
   return (
     <div className="db-card">
@@ -281,44 +287,30 @@ function WeatherSection({
         linkLabel="Semua Data Cuaca"
       />
 
-      {/* ── Search & Filter dipindah ke sini, di luar map ── */}
-      <div className="db-weather-filter">
-        <input
-          type="text"
-          placeholder="Cari kelurahan..."
-          className="db-weather-filter__input"
-          value={searchKelurahan}
-          onChange={(e) => setSearchKelurahan(e.target.value)}
-        />
-        <select
-          className="db-weather-filter__select"
-          value={filterKecamatan}
-          onChange={(e) => setFilterKecamatan(e.target.value)}
-        >
-          {kecamatanList.map((kecamatan, index) => (
-            <option key={index} value={kecamatan}>
-              {kecamatan}
-            </option>
-          ))}
-        </select>
-      </div>
+      <WeatherSummaryBar rata={rata} loading={loadingRata} />
 
       <div className="db-weather-map-wrap">
         <WeatherMapView
           filteredCuaca={filteredCuaca}
           loading={loading}
           countdown={countdown}
-          searchKelurahan={searchKelurahan}
-          setSearchKelurahan={setSearchKelurahan}
-          filterKecamatan={filterKecamatan}
-          setFilterKecamatan={setFilterKecamatan}
-          kecamatanList={kecamatanList}
           onWeatherSelect={setSelectedWeather}
           showFilters={false}
         />
       </div>
 
-      <div className="db-weather-layout">
+      <div className="db-weather-slider">
+        <button
+          type="button"
+          className="db-weather-slider__nav db-weather-slider__nav--prev"
+          onClick={goPrev}
+          aria-label="Kelurahan sebelumnya"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+
         <div className="db-weather-main-card">
           <div className="db-weather-main-card__bg" />
           <div className="db-weather-main-card__content">
@@ -327,47 +319,52 @@ function WeatherSection({
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
                 <circle cx="12" cy="10" r="3"/>
               </svg>
-              {selectedWeather?.desa || "Semarang"}
+              {current?.desa || "Semarang"}
             </div>
             <div className="db-weather-main-card__temp">
-              {selectedWeather?.t ?? "-"}°
+              {current?.t ?? "-"}°
             </div>
             <div className="db-weather-main-card__desc">
-              {selectedWeather?.weather_desc ?? selectedWeather?.cuaca ?? "Cerah Berawan"}
+              {current?.weather_desc ?? current?.cuaca ?? "Cerah Berawan"}
             </div>
             <div className="db-weather-main-card__row">
-              <span>💧 {selectedWeather?.hu ?? "-"}%</span>
-              <span>🌬 {selectedWeather?.ws ?? "-"} km/j</span>
-              <span>🕐 {formatTime(selectedWeather?.local_datetime)}</span>
+              <span>💧 {current?.hu ?? "-"}%</span>
+              <span>🌬 {current?.ws ?? "-"} km/j</span>
+              <span>🕐 {formatTime(current?.local_datetime)}</span>
             </div>
           </div>
         </div>
 
-        <div className="db-weather-list">
-          <div className="db-weather-list__label">Kelurahan lainnya</div>
-          {loading ? (
-            <div className="db-loading">Memuat data...</div>
-          ) : (
-            topItems.map((item, i) => (
-              <WeatherSummaryCard
-                key={item.id || i}
-                weather={item}
-                onSelect={setSelectedWeather}
-                isSelected={selectedWeather?.id === item.id}
-              />
-            ))
-          )}
-        </div>
+        <button
+          type="button"
+          className="db-weather-slider__nav db-weather-slider__nav--next"
+          onClick={goNext}
+          aria-label="Kelurahan berikutnya"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </button>
       </div>
+
+      {filteredCuaca.length > 1 && (
+        <div className="db-weather-slider__dots">
+          {filteredCuaca.map((_, i) => (
+            <span
+              key={i}
+              className={`db-weather-slider__dot ${i === slideIndex ? "db-weather-slider__dot--active" : ""}`}
+              onClick={() => setSlideIndex(i)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-/* ── Tide Section ── */
+/* ── Tide Section (sesuai struktur baru: rob per wilayah) ── */
 function TideSection({ data }) {
-  const sorted = [...data].sort(
-    (a, b) => getTideValue(b) - getTideValue(a)
-  );
+  const sorted = [...data].sort((a, b) => b.tinggi_rob - a.tinggi_rob);
   const preview = sorted.slice(0, 6);
 
   return (
@@ -394,19 +391,18 @@ function TideSection({ data }) {
                 <th>Lokasi</th>
                 <th>Status</th>
                 <th>Potensi Rob</th>
-                <th>Kenaikan</th>
+                <th>Tinggi Rob</th>
                 <th>Waktu</th>
               </tr>
             </thead>
             <tbody>
               {preview.map((item, index) => {
-                const value = getTideValue(item);
-                const potential = getRobPotential(value);
-                const cls = getRobPotentialClass(value);
+                const potential = getRobPotential(item.tinggi_rob);
+                const cls = getRobPotentialClass(item.tinggi_rob);
                 return (
-                  <tr key={item.id || index}>
+                  <tr key={item.nama_wilayah || index}>
                     <td className="db-tide-table__loc">
-                      {getAreaName(item)}
+                      {item.nama_wilayah}
                     </td>
                     <td>
                       <span className={`db-status-pill db-status-pill--${normalizeText(item.status || "")}`}>
@@ -420,7 +416,9 @@ function TideSection({ data }) {
                     </td>
                     <td className="db-tide-table__val">
                       <span className={`db-tide-val db-tide-val--${cls}`}>
-                        {value.toFixed(2)} m
+                        {item.tinggi_rob > 0
+                          ? `${item.tinggi_rob.toFixed(2)} m`
+                          : "Tidak tergenang"}
                       </span>
                     </td>
                     <td className="db-tide-table__time">
@@ -444,14 +442,10 @@ function TideSection({ data }) {
 
 /* ── Rob Map Section ── */
 function RobMapSection({ data }) {
-  const highCount = data.filter((i) => getTideValue(i) >= 2.2).length;
-  const medCount = data.filter(
-    (i) => getTideValue(i) >= 1.8 && getTideValue(i) < 2.2
-  ).length;
-  const lowCount = data.filter(
-    (i) => getTideValue(i) >= 1.5 && getTideValue(i) < 1.8
-  ).length;
-  const safeCount = data.filter((i) => getTideValue(i) < 1.5).length;
+  const highCount = data.filter((i) => i.tinggi_rob >= 0.7).length;
+  const medCount  = data.filter((i) => i.tinggi_rob >= 0.4 && i.tinggi_rob < 0.7).length;
+  const lowCount  = data.filter((i) => i.tinggi_rob > 0 && i.tinggi_rob < 0.4).length;
+  const safeCount = data.filter((i) => i.tinggi_rob <= 0).length;
 
   return (
     <div className="db-card">
@@ -500,11 +494,11 @@ function RobMapSection({ data }) {
 function DashboardContent() {
   const [selectedWeather, setSelectedWeather] = useState(null);
   const [weatherData, setWeatherData] = useState([]);
-  const [tideData, setTideData] = useState([]);
+  const [robData, setRobData] = useState([]);
   const [loadingWeather, setLoadingWeather] = useState(true);
   const [countdown, setCountdown] = useState(60);
-  const [searchKelurahan, setSearchKelurahan] = useState("");
-  const [filterKecamatan, setFilterKecamatan] = useState("Semua Kecamatan");
+
+  const { rata, loading: loadingRata } = useWeatherRataRata();
 
   async function fetchWeather() {
     try {
@@ -521,15 +515,10 @@ function DashboardContent() {
     }
   }
 
-  async function fetchTideData() {
+  async function fetchRobData() {
     try {
-      const response = await api.get("/pasang-surut");
-      const rawData = response.data.data || [];
-      const filteredData = rawData.filter((item) => {
-        const text = normalizeText(JSON.stringify(item));
-        return ROB_AREAS.some((area) => text.includes(normalizeText(area)));
-      });
-      setTideData(filteredData);
+      const response = await api.get("/pasang-surut/rob-wilayah");
+      setRobData(response.data.data || []);
     } catch (error) {
       console.error("Gagal mengambil data pasang surut:", error);
     }
@@ -537,7 +526,7 @@ function DashboardContent() {
 
   useEffect(() => {
     fetchWeather();
-    fetchTideData();
+    fetchRobData();
   }, []);
 
   useEffect(() => {
@@ -545,6 +534,7 @@ function DashboardContent() {
       setCountdown((prev) => {
         if (prev <= 1) {
           fetchWeather();
+          fetchRobData();
           return 60;
         }
         return prev - 1;
@@ -552,23 +542,6 @@ function DashboardContent() {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
-
-  const kecamatanList = useMemo(() => {
-    const list = weatherData.map((item) => item.kecamatan).filter(Boolean);
-    return ["Semua Kecamatan", ...new Set(list)];
-  }, [weatherData]);
-
-  const filteredCuaca = useMemo(() => {
-    return weatherData.filter((item) => {
-      const matchKelurahan = normalizeText(item.desa).includes(
-        normalizeText(searchKelurahan)
-      );
-      const matchKecamatan =
-        filterKecamatan === "Semua Kecamatan" ||
-        item.kecamatan === filterKecamatan;
-      return matchKelurahan && matchKecamatan;
-    });
-  }, [weatherData, searchKelurahan, filterKecamatan]);
 
   const now = new Date();
   const dateStr = now.toLocaleDateString("id-ID", {
@@ -595,25 +568,22 @@ function DashboardContent() {
         </div>
       </div>
 
-      <RobAlertBanner tideData={tideData} />
-      <SummaryStats tideData={tideData} weatherData={weatherData} />
+      <RobAlertBanner robData={robData} />
+      <SummaryStats robData={robData} weatherData={weatherData} />
 
       <WeatherSection
         selectedWeather={selectedWeather || weatherData?.[0]}
         setSelectedWeather={setSelectedWeather}
-        filteredCuaca={filteredCuaca}
+        filteredCuaca={weatherData}
         loading={loadingWeather}
         countdown={countdown}
-        searchKelurahan={searchKelurahan}
-        setSearchKelurahan={setSearchKelurahan}
-        filterKecamatan={filterKecamatan}
-        setFilterKecamatan={setFilterKecamatan}
-        kecamatanList={kecamatanList}
+        rata={rata}
+        loadingRata={loadingRata}
       />
 
       <div className="db-bottom-grid">
-        <TideSection data={tideData} />
-        <RobMapSection data={tideData} />
+        <TideSection data={robData} />
+        <RobMapSection data={robData} />
       </div>
     </main>
   );

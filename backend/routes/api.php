@@ -6,6 +6,8 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\WeatherController;
 use App\Models\Weather;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PasangSurutController;
+use App\Http\Controllers\WilayahRobController;
 
 // ── Test ──────────────────────────────────────────────────────────────────────
 Route::get('/test', function () {
@@ -144,3 +146,19 @@ Route::get('/pasang-surut', function () {
 });
 
 Route::get('/weather/rata-rata', [WeatherController::class, 'rataRata']);
+
+Route::get('/pasang-surut', [PasangSurutController::class, 'index']);
+Route::get('/pasang-surut/rob-wilayah', [PasangSurutController::class, 'robPerWilayah']);
+
+// Admin (wajib login via Sanctum)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/admin/pasang-surut', [PasangSurutController::class, 'adminIndex']);
+    Route::post('/admin/pasang-surut', [PasangSurutController::class, 'store']);
+    Route::put('/admin/pasang-surut/{pasangSurut}', [PasangSurutController::class, 'update']);
+    Route::delete('/admin/pasang-surut/{pasangSurut}', [PasangSurutController::class, 'destroy']);
+
+    Route::get('/admin/wilayah-rob', [WilayahRobController::class, 'index']);
+    Route::post('/admin/wilayah-rob', [WilayahRobController::class, 'store']);
+    Route::put('/admin/wilayah-rob/{wilayahRob}', [WilayahRobController::class, 'update']);
+    Route::delete('/admin/wilayah-rob/{wilayahRob}', [WilayahRobController::class, 'destroy']);
+});

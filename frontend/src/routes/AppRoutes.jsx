@@ -14,6 +14,7 @@ import AdminProfil from "../pages/Admin/Profil";
 import AdminLayout from "../layouts/AdminLayout";
 import EndminCuaca from "../pages/Admin/Cuaca";
 import Pengguna from "../pages/Admin/Pengguna";
+import PasangSurutAdmin from "../pages/Admin/PasangSurutAdmin";
 
 export default function AppRoutes() {
   return (
@@ -35,6 +36,7 @@ export default function AppRoutes() {
           <Route index element={<AdminDashboard />} />
           <Route path="profil" element={<AdminProfil />} />
           <Route path="Cuaca" element={<EndminCuaca />} />
+          <Route path="Pasang-Surut" element={<PasangSurutAdmin />} />
           <Route
             path="/ocean-dashboard/pengguna"
             element={

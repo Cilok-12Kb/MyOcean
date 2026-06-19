@@ -1,191 +1,47 @@
+/* ============================================================
+   PasangSurut.css — gaya khusus yang TIDAK tersedia di Bootstrap
+   (grafik SVG, warna tema, ikon kalender) — sisanya pakai utility
+   class Bootstrap langsung di JSX.
+   ============================================================ */
+
 .pasang-surut-page {
-  padding: 20px 52px 40px;
   background: #ffffff;
   min-height: calc(100vh - 130px);
 }
 
-.tide-summary-section {
-  display: block;
-  margin-bottom: 36px;
+/* ── Heading kustom (Bootstrap tidak punya border-left aksen) ── */
+.analysis-chart-heading {
+  padding-left: 18px;
+  border-left: 8px solid #003b73;
+  color: #003b73;
+  font-size: 1.5rem;
+  font-weight: 900;
 }
 
-.tide-chart-card {
-  width: 100%;
-  height: 500px;
-  background: #ffffff;
-  border: 1px solid #d0d0d0;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0,0,0,.25);
-  overflow: hidden;
+.analysis-chart-title {
+  margin: 1.5rem 0 1.25rem;
+  color: #003b73;
+  font-size: 1.75rem;
+  font-weight: 900;
 }
 
-.tide-tabel-card{
-  position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 560px;
-  padding: 28px;
-  background: white;
-  border: 1px solid #d8d8d8;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
-}
-
-.chart-header {
-  padding: 12px 18px;
-  background: linear-gradient(90deg, #1c66b1, #7fb2e7);
-  color: white;
-  font-size: 18px;
-}
-
-.chart-grid {
-  stroke: #d9e6f7;
-  stroke-width: 1;
-}
-
-.axis-line {
-  stroke: #9bb7d7;
-  stroke-width: 1.5;
-}
-
-.axis-label,
-.x-axis-label {
-  font-size: 14px;
-  fill: #333;
-  font-weight: 600;
-}
-
-.axis-label,
-.x-axis-label {
-  font-size: 14px;
-  fill: #333;
-  font-weight: 600;
-}
-
-.chart-line {
-  stroke: #0084e8;
-  stroke-width: 4;
-}
-
-.chart-dot {
-  fill: #e60000;
-}
-
-.chart-label {
-  font-size: 13px;
-  fill: #e60000;
-  font-weight: 800;
-}
-
-.chart-date {
-  padding: 18px 28px 0;
-  font-size: 22px;
-  font-weight: 800;
-  color: #0074d9;
-}
-
-.tide-chart {
-  width: 100%;
-  height: calc(100% - 90px);
-}
-
-.tide-table-section {
-  margin-top: 22px;
-}
-
-.table-title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 18px;
-}
-
-.table-title-row h1 {
-  font-size: 28px;
+.tide-table-heading {
+  font-size: 1.5rem;
   font-weight: 900;
   color: #000;
 }
 
-.table-title-row button {
-  padding: 8px 16px;
-  border: 1px solid #c9c9c9;
-  border-radius: 7px;
-  background: white;
-  font-weight: 700;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-}
-
-.tide-table {
+/* ── Grafik SVG: scroll horizontal di layar kecil, tetap proporsional ── */
+.analysis-chart-scroll {
   width: 100%;
-  border-collapse: collapse;
-  color: #0084e8;
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.tide-table thead {
-  background: #e9f0ff;
-}
-
-.tide-table th,
-.tide-table td {
-  padding: 14px 20px;
-  border-bottom: 1px solid #44adff;
-  text-align: left;
-}
-
-.tide-table th:first-child,
-.tide-table td:first-child {
-  width: 80px;
-}
-
-.analysis-chart-card {
-  width: 100%;
-  min-height: 660px;
-  padding: 34px 38px 28px;
-  background: #ffffff;
-  border: 1px solid #dbe5ef;
-  border-radius: 24px;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
-}
-
-.analysis-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.analysis-card-header h2 {
-  margin: 0;
-  padding-left: 18px;
-  border-left: 8px solid #003b73;
-  color: #003b73;
-  font-size: 24px;
-  font-weight: 900;
-}
-
-.analysis-card-header button {
-  padding: 14px 26px;
-  border: none;
-  border-radius: 8px;
-  background: #003b73;
-  color: #ffffff;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.analysis-chart-title {
-  margin: 42px 0 22px;
-  text-align: center;
-  color: #003b73;
-  font-size: 30px;
-  font-weight: 900;
+  overflow-x: auto;
 }
 
 .analysis-chart {
   width: 100%;
-  height: 440px;
+  min-width: 700px; /* jaga keterbacaan label jam di layar sempit */
+  height: auto;
+  aspect-ratio: 1600 / 520;
 }
 
 .analysis-grid {
@@ -242,27 +98,19 @@
   stroke-width: 2;
 }
 
+/* ── Legend ── */
 .analysis-legend {
-  display: flex;
-  justify-content: center;
-  gap: 28px;
-  margin-top: 8px;
   color: #666;
-  font-size: 18px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
-.analysis-legend span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.analysis-legend i {
-  width: 56px;
-  height: 18px;
+.legend-swatch {
+  width: 40px;
+  height: 14px;
   display: inline-block;
   border: 4px solid;
+  border-radius: 2px;
 }
 
 .legend-digital {
@@ -286,45 +134,93 @@
   background: transparent;
 }
 
-.rob-badge {
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 16px;
+/* ── Date picker & hour picker: tetap custom karena warna tema khusus ── */
+.analysis-date-picker,
+.tide-hour-picker {
+  height: 48px;
+  border-radius: 10px;
+  border: 2px solid #dbe5ef !important;
+  font-weight: 700;
+  color: #003b73 !important;
+  background-color: #f5f9ff !important;
+}
+
+.analysis-date-picker:hover,
+.tide-hour-picker:hover {
+  border-color: #003b73 !important;
+  background-color: #eaf2fb !important;
+}
+
+.analysis-date-picker:focus,
+.tide-hour-picker:focus {
+  border-color: #003b73 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(0, 59, 115, 0.1) !important;
+}
+
+.analysis-date-picker::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  filter: invert(20%) sepia(70%) saturate(1000%) hue-rotate(180deg);
+}
+
+.tide-export-btn {
+  height: 48px;
+  background-color: #003b73 !important;
+  border-color: #003b73 !important;
   font-weight: 800;
 }
 
-.rob-badge.tenang {
-  background: #d7fbe0;
-  color: #087f23;
+.tide-export-btn:hover {
+  background-color: #002a52 !important;
+  border-color: #002a52 !important;
 }
 
-.rob-badge.rendah {
-  background: #fff9c4;
-  color: #8a7200;
+/* ── Tabel: warna tema biru khas project ── */
+.tide-table {
+  color: #0084e8;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
-.rob-badge.sedang {
-  background: #ffe0b2;
-  color: #b45309;
+.tide-table thead {
+  background: #e9f0ff;
 }
 
-.rob-badge.tinggi {
-  background: #ffcdd2;
-  color: #d50000;
+.tide-table thead th {
+  color: #003b73;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  border-bottom-width: 2px;
 }
 
-@media (max-width: 1100px) {
-  .tide-summary-section {
-    grid-template-columns: 1fr;
+.tide-table td,
+.tide-table th {
+  border-bottom-color: #cfe4ff;
+}
+
+.rob-badge-pill {
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 0.45em 0.8em;
+  border-radius: 999px;
+}
+
+/* ── Empty states ── */
+.analysis-chart-empty,
+.tide-table-empty {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* ── Responsive tweaks tambahan ── */
+@media (max-width: 575.98px) {
+  .analysis-chart-title {
+    font-size: 1.25rem;
   }
-
-   .tide-chart-card {
-        width: 100%;
-        height: 700px;
-        background: #ffffff;
-        border: 1px solid #d0d0d0;
-        border-radius: 8px;
-        box-shadow: 0 2px 5px rgba(0,0,0,.25);
-        overflow: hidden;
-    }
+  .tide-table-heading {
+    font-size: 1.25rem;
+  }
 }
