@@ -1,9 +1,17 @@
 // src/components/admin/pasang_surut/ModalGeneratePrediksi.jsx
 import { useState } from "react";
-import { Modal, Button, Alert, Spinner } from "react-bootstrap";
+import { Modal, Button, Alert, Spinner, Form } from "react-bootstrap";
 import api from "../../services/api";
 
+function toDateInputValue(date) {
+  const year  = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day   = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function ModalGeneratePrediksi({ show, onHide, onDataChanged }) {
+  const [tanggalTarget, setTanggalTarget] = useState(toDateInputValue(new Date()));
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
@@ -14,14 +22,15 @@ export default function ModalGeneratePrediksi({ show, onHide, onDataChanged }) {
     setResult(null);
 
     try {
-      // TODO: endpoint model prediksi belum dibuat — placeholder dulu
-      const res = await api.post("/admin/pasang-surut/generate-prediksi");
+      const res = await api.post("/admin/pasang-surut/generate-prediksi", {
+        tanggal: tanggalTarget,
+      });
       setResult(res.data);
       onDataChanged?.();
     } catch (err) {
       setError(
         err.response?.data?.message ||
-        "Fitur prediksi belum tersedia. Endpoint model akan dibuat selanjutnya."
+        "Gagal generate prediksi. Coba lagi beberapa saat."
       );
     } finally {
       setLoading(false);
@@ -42,19 +51,28 @@ export default function ModalGeneratePrediksi({ show, onHide, onDataChanged }) {
 
       <Modal.Body>
         <p className="text-muted">
-          Fitur ini akan menghasilkan prediksi ketinggian air untuk hari ini,
-          mulai jam 00.00 sampai 23.00, menggunakan model prediksi pasang surut.
+          Fitur ini akan menghasilkan prediksi ketinggian air untuk 24 jam pada
+          tanggal yang dipilih, menggunakan model BiLSTM berdasarkan data
+          historis 2 hari sebelumnya.
         </p>
 
-        <Alert variant="info" className="small mb-3">
-          Model prediksi belum diimplementasikan. Tombol ini sudah siap dipakai
-          begitu endpoint model tersedia.
-        </Alert>
+        <Form.Group className="mb-3">
+          <Form.Label className="fw-semibold small">Tanggal Prediksi</Form.Label>
+          <Form.Control
+            type="date"
+            value={tanggalTarget}
+            onChange={(e) => setTanggalTarget(e.target.value)}
+          />
+          <Form.Text className="text-muted">
+            Data historis akan diambil dari tanggal sebelumnya secara otomatis
+            (contoh: prediksi 20-06 memakai data 18-06 dan 19-06).
+          </Form.Text>
+        </Form.Group>
 
         {error && <Alert variant="warning" className="small">{error}</Alert>}
         {result && (
           <Alert variant="success" className="small">
-            Berhasil generate {result.count ?? 24} data prediksi untuk hari ini.
+            Berhasil generate {result.count ?? 24} data prediksi untuk {tanggalTarget}.
           </Alert>
         )}
       </Modal.Body>
@@ -70,7 +88,7 @@ export default function ModalGeneratePrediksi({ show, onHide, onDataChanged }) {
               Memproses...
             </>
           ) : (
-            "Generate Prediksi Hari Ini"
+            "Generate Prediksi"
           )}
         </Button>
       </Modal.Footer>

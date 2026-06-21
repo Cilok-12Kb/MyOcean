@@ -6,13 +6,12 @@ const navSections = [
     label: "UTAMA",
     items: [
       { to: "/ocean-dashboard", label: "Dashboard", icon: "ti-layout-dashboard", end: true },
-      { to: "/ocean-dashboard/pasang-surut", label: "Pasang Surut", icon: "ti-chart-line" },
     ],
   },
   {
     label: "MONITORING",
     items: [
-      { to: "/ocean-dashboard/peringatan", label: "Peringatan Alert", icon: "ti-bell-ringing", badge: "3", badgeColor: "#f87171" },
+      { to: "/ocean-dashboard/pasang-surut", label: "Pasang Surut", icon: "ti-chart-line" },
       { to: "/ocean-dashboard/peta", label: "Peta & Wilayah Rob", icon: "ti-map-2" },
       { to: "/ocean-dashboard/cuaca", label: "Integrasi Cuaca", icon: "ti-cloud" },
     ],
@@ -21,15 +20,6 @@ const navSections = [
     label: "MANAJEMEN",
     items: [
       { to: "/ocean-dashboard/pengguna", label: "Pengguna", icon: "ti-users", superAdminOnly: true },
-      { to: "/ocean-dashboard/data", label: "Data Pasang Surut", icon: "ti-database" },
-      { to: "/ocean-dashboard/laporan", label: "Laporan & Ekspor", icon: "ti-file-analytics" },
-    ],
-  },
-  {
-    label: "SISTEM",
-    items: [
-      { to: "/ocean-dashboard/log", label: "Log Aktivitas", icon: "ti-activity", badge: "!", badgeColor: "#fbbf24" },
-      { to: "/ocean-dashboard/pengaturan", label: "Pengaturan", icon: "ti-settings" },
     ],
   },
 ];

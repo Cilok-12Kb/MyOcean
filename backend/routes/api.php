@@ -162,3 +162,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/admin/wilayah-rob/{wilayahRob}', [WilayahRobController::class, 'update']);
     Route::delete('/admin/wilayah-rob/{wilayahRob}', [WilayahRobController::class, 'destroy']);
 });
+
+Route::post('/admin/pasang-surut/generate-prediksi', [PasangSurutController::class, 'generatePrediksi']);

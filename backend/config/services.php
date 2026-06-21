@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'model_service' => [
+        'url'     => env('MODEL_SERVICE_URL', 'http://localhost:8001'),
+        'api_key' => env('MODEL_SERVICE_API_KEY'),
+    ],
+
 ];
