@@ -11,6 +11,7 @@ class WilayahRob extends Model
     protected $fillable = [
         'nama_wilayah',
         'tinggi_tanah',
+        'geojson',       // polygon batas wilayah, format GeoJSON geometry object
     ];
 
     protected $casts = [

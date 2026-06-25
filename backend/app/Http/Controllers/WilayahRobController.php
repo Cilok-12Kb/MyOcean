@@ -3,22 +3,86 @@
 namespace App\Http\Controllers;
 
 use App\Models\WilayahRob;
+use App\Models\PasangSurut;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class WilayahRobController extends Controller
 {
+    // ── Publik: daftar wilayah untuk tabel di halaman peta ──
     public function index()
     {
-        $data = WilayahRob::orderBy('nama_wilayah', 'asc')->get();
+        $wilayah = WilayahRob::orderBy('nama_wilayah')->get([
+            'id', 'nama_wilayah', 'tinggi_tanah',
+        ]);
 
-        return response()->json(['data' => $data]);
+        return response()->json(['data' => $wilayah]);
     }
 
+    // ── Publik: data peta — wilayah + geometry + tinggi_rob real-time ──
+    // Digabungkan dengan data pasang surut terkini (jam paling baru hari ini).
+    // Frontend memakai endpoint ini untuk render polygon + warna risiko.
+    public function petaData()
+    {
+        $wilayah = WilayahRob::orderBy('nama_wilayah')->get();
+
+        // Ambil data pasang surut terkini (jam terakhir hari ini, atau hari sebelumnya)
+        $air = PasangSurut::whereNotNull('tide_height_digital')
+            ->orderByDesc('tanggal')
+            ->orderByDesc('jam')
+            ->first();
+
+        $result = $wilayah->map(function ($w) use ($air) {
+            $tinggiRob = 0;
+            $tinggiAir = null;
+
+            if ($air) {
+                $tinggiAir = $air->tide_height_digital;
+                $tinggiRob = max(round($tinggiAir - $w->tinggi_tanah, 2), 0);
+            }
+
+            // Decode geojson hanya kalau ada, biarkan null kalau belum diisi
+            $geometry = null;
+            if ($w->geojson) {
+                $geometry = json_decode($w->geojson, true);
+            }
+
+            return [
+                'id'           => $w->id,
+                'nama_wilayah' => $w->nama_wilayah,
+                'tinggi_tanah' => $w->tinggi_tanah,
+                'tinggi_air'   => $tinggiAir,
+                'tinggi_rob'   => $tinggiRob,
+                'tergenang'    => $tinggiRob > 0,
+                'geometry'     => $geometry, // null kalau belum ada GeoJSON
+                'data_air_at'  => $air ? ($air->tanggal->toDateString() . ' ' . str_pad($air->jam, 2, '0', STR_PAD_LEFT) . ':00') : null,
+            ];
+        });
+
+        return response()->json(['data' => $result]);
+    }
+
+    // ── Admin: daftar lengkap (termasuk ada/tidaknya geojson) ──
+    public function adminIndex()
+    {
+        $wilayah = WilayahRob::orderBy('nama_wilayah')->get()->map(function ($w) {
+            return [
+                'id'            => $w->id,
+                'nama_wilayah'  => $w->nama_wilayah,
+                'tinggi_tanah'  => $w->tinggi_tanah,
+                'has_geojson'   => !empty($w->geojson),
+            ];
+        });
+
+        return response()->json(['data' => $wilayah]);
+    }
+
+    // ── Admin: tambah wilayah baru ──
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nama_wilayah' => 'required|string|max:255|unique:wilayah_rob,nama_wilayah',
-            'tinggi_tanah' => 'required|numeric|min:0',
+            'nama_wilayah' => 'required|string|max:100|unique:wilayah_rob,nama_wilayah',
+            'tinggi_tanah' => 'required|numeric|min:0|max:10',
         ]);
 
         $wilayah = WilayahRob::create($validated);
@@ -26,11 +90,12 @@ class WilayahRobController extends Controller
         return response()->json(['data' => $wilayah], 201);
     }
 
+    // ── Admin: update nama/tinggi tanah wilayah ──
     public function update(Request $request, WilayahRob $wilayahRob)
     {
         $validated = $request->validate([
-            'nama_wilayah' => 'required|string|max:255|unique:wilayah_rob,nama_wilayah,' . $wilayahRob->id,
-            'tinggi_tanah' => 'required|numeric|min:0',
+            'nama_wilayah' => 'required|string|max:100|unique:wilayah_rob,nama_wilayah,' . $wilayahRob->id,
+            'tinggi_tanah' => 'required|numeric|min:0|max:10',
         ]);
 
         $wilayahRob->update($validated);
@@ -38,10 +103,47 @@ class WilayahRobController extends Controller
         return response()->json(['data' => $wilayahRob]);
     }
 
+    // ── Admin: hapus wilayah ──
     public function destroy(WilayahRob $wilayahRob)
     {
         $wilayahRob->delete();
 
-        return response()->json(['message' => 'Wilayah berhasil dihapus']);
+        return response()->json(['message' => 'Wilayah berhasil dihapus.']);
+    }
+
+    // ── Admin: update/hapus geometri GeoJSON wilayah tertentu ──
+    // Terpisah dari update() supaya form wilayah dan form peta bisa dikelola
+    // secara independen tanpa harus selalu kirim keduanya sekaligus.
+    public function updateGeojson(Request $request, WilayahRob $wilayahRob)
+    {
+        $validated = $request->validate([
+            // geojson boleh null (untuk hapus geometri)
+            'geojson' => 'nullable|string',
+        ]);
+
+        // Validasi format JSON kalau dikirim
+        if (!empty($validated['geojson'])) {
+            $decoded = json_decode($validated['geojson'], true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'message' => 'Format GeoJSON tidak valid: ' . json_last_error_msg(),
+                ], 422);
+            }
+
+            // Pastikan geometry-nya Polygon atau MultiPolygon
+            $type = $decoded['type'] ?? '';
+            if (!in_array($type, ['Polygon', 'MultiPolygon', 'Feature', 'FeatureCollection'])) {
+                return response()->json([
+                    'message' => 'GeoJSON harus bertipe Polygon, MultiPolygon, Feature, atau FeatureCollection.',
+                ], 422);
+            }
+        }
+
+        $wilayahRob->update(['geojson' => $validated['geojson'] ?? null]);
+
+        return response()->json([
+            'message'     => $validated['geojson'] ? 'Geometri berhasil disimpan.' : 'Geometri berhasil dihapus.',
+            'has_geojson' => !empty($validated['geojson']),
+        ]);
     }
 }

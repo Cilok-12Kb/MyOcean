@@ -191,3 +191,98 @@
     bottom: 24px;
   }
 }
+
+/* ── Tambahkan ke bagian bawah src/styles/Peta.css ── */
+
+/* ── Tabel detail wilayah di bawah peta ── */
+
+.wilayah-table-wrapper {
+  padding-top: 8px;
+}
+
+.wilayah-table-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.wilayah-table {
+  font-size: 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.wilayah-table thead th {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #cbd5e1;
+  padding: 10px 12px;
+}
+
+.wilayah-table tbody td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+}
+
+.wilayah-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.rob-level-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #000;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  min-width: 80px;
+  text-align: center;
+}
+
+/* ── Popup polygon rob di peta ── */
+
+.rob-polygon-popup {
+  font-size: 13px;
+  line-height: 1.6;
+  min-width: 180px;
+}
+
+.rob-polygon-popup strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: #0f172a;
+}
+
+/* ── Peta card override: buat lebih tinggi supaya tabel muat ── */
+
+.peta-card {
+  height: auto !important;    /* override height calc supaya tabel tidak terpotong */
+  min-height: 600px;
+}
+
+.peta-map {
+  height: 520px !important;   /* fixed height supaya tidak bergantung pada parent */
+}
+
+@media (max-width: 768px) {
+  .peta-map {
+    height: 380px !important;
+  }
+
+  .wilayah-table-heading {
+    font-size: 13px;
+  }
+
+  .wilayah-table {
+    font-size: 12px;
+  }
+}

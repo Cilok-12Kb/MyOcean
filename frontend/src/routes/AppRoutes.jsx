@@ -1,3 +1,4 @@
+// src/routes/AppRoutes.jsx
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SuperAdminRoute } from "../components/SuperAdminRoute";
 
@@ -15,6 +16,7 @@ import AdminLayout from "../layouts/AdminLayout";
 import EndminCuaca from "../pages/Admin/Cuaca";
 import Pengguna from "../pages/Admin/Pengguna";
 import PasangSurutAdmin from "../pages/Admin/PasangSurutAdmin";
+import PetaAdmin from "../pages/Admin/PetaAdmin";              // ← tambahan
 
 export default function AppRoutes() {
   return (
@@ -37,6 +39,7 @@ export default function AppRoutes() {
           <Route path="profil" element={<AdminProfil />} />
           <Route path="Cuaca" element={<EndminCuaca />} />
           <Route path="Pasang-Surut" element={<PasangSurutAdmin />} />
+          <Route path="peta" element={<PetaAdmin />} />
           <Route
             path="/ocean-dashboard/pengguna"
             element={
@@ -45,7 +48,6 @@ export default function AppRoutes() {
               </SuperAdminRoute>
             }
           />
-          {/* tambah halaman lain di sini nanti */}
         </Route>
       </Routes>
     </BrowserRouter>

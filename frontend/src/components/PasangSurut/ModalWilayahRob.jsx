@@ -1,84 +1,85 @@
-// src/components/admin/pasang_surut/ModalWilayahRob.jsx
+// src/components/PasangSurut/ModalWilayahRob.jsx
 import { useEffect, useState } from "react";
-import { Modal, Table, Button, Form, Row, Col, Spinner, Alert } from "react-bootstrap";
+import {
+  Modal, Button, Table, Form, Alert, Spinner, Badge,
+} from "react-bootstrap";
 import api from "../../services/api";
 
-const emptyForm = { id: null, nama_wilayah: "", tinggi_tanah: "" };
+const EMPTY_FORM = { nama_wilayah: "", tinggi_tanah: "" };
 
 export default function ModalWilayahRob({ show, onHide, onDataChanged }) {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState(emptyForm);
-  const [isEditing, setIsEditing] = useState(false);
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [list,    setList]    = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [error,   setError]   = useState("");
+  const [success, setSuccess] = useState("");
+  const [form,    setForm]    = useState(EMPTY_FORM);
+  const [editId,  setEditId]  = useState(null);
 
-  async function fetchData() {
+  async function fetchList() {
     setLoading(true);
     try {
       const res = await api.get("/admin/wilayah-rob");
-      setData(res.data.data || []);
-    } catch (err) {
-      console.error("Gagal mengambil data wilayah rob:", err);
+      setList(res.data.data || []);
+    } catch {
+      setError("Gagal memuat data wilayah.");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    if (show) fetchData();
+    if (show) { fetchList(); setError(""); setSuccess(""); setForm(EMPTY_FORM); setEditId(null); }
   }, [show]);
 
-  function resetForm() {
-    setForm(emptyForm);
-    setIsEditing(false);
-    setError("");
-  }
-
   function handleEdit(item) {
-    setForm({
-      id: item.id,
-      nama_wilayah: item.nama_wilayah,
-      tinggi_tanah: item.tinggi_tanah,
-    });
-    setIsEditing(true);
+    setEditId(item.id);
+    setForm({ nama_wilayah: item.nama_wilayah, tinggi_tanah: item.tinggi_tanah });
+    setError(""); setSuccess("");
+  }
+
+  function handleCancelEdit() {
+    setEditId(null);
+    setForm(EMPTY_FORM);
     setError("");
   }
 
-  async function handleDelete(id) {
-    if (!window.confirm("Hapus wilayah ini? Data rob untuk wilayah ini juga tidak akan terhitung lagi.")) return;
-    try {
-      await api.delete(`/admin/wilayah-rob/${id}`);
-      fetchData();
-      onDataChanged?.();
-    } catch (err) {
-      console.error("Gagal menghapus wilayah:", err);
+  async function handleSave() {
+    if (!form.nama_wilayah.trim() || form.tinggi_tanah === "") {
+      setError("Nama wilayah dan tinggi tanah wajib diisi."); return;
     }
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setSubmitting(true);
-    setError("");
-
-    const payload = {
-      nama_wilayah: form.nama_wilayah,
-      tinggi_tanah: Number(form.tinggi_tanah),
-    };
-
+    setSaving(true); setError(""); setSuccess("");
     try {
-      if (isEditing) {
-        await api.put(`/admin/wilayah-rob/${form.id}`, payload);
+      if (editId) {
+        await api.put(`/admin/wilayah-rob/${editId}`, form);
+        setSuccess("Wilayah berhasil diperbarui.");
       } else {
-        await api.post("/admin/wilayah-rob", payload);
+        await api.post("/admin/wilayah-rob", form);
+        setSuccess("Wilayah berhasil ditambahkan.");
       }
-      resetForm();
-      fetchData();
+      setForm(EMPTY_FORM); setEditId(null);
+      await fetchList();
       onDataChanged?.();
     } catch (err) {
       setError(err.response?.data?.message || "Gagal menyimpan data.");
     } finally {
-      setSubmitting(false);
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(item) {
+    if (!window.confirm(`Hapus wilayah "${item.nama_wilayah}"? Geometri petanya juga akan hilang.`)) return;
+    setDeleting(item.id); setError(""); setSuccess("");
+    try {
+      await api.delete(`/admin/wilayah-rob/${item.id}`);
+      setSuccess("Wilayah berhasil dihapus.");
+      await fetchList();
+      onDataChanged?.();
+    } catch (err) {
+      setError(err.response?.data?.message || "Gagal menghapus wilayah.");
+    } finally {
+      setDeleting(null);
     }
   }
 
@@ -89,71 +90,94 @@ export default function ModalWilayahRob({ show, onHide, onDataChanged }) {
       </Modal.Header>
 
       <Modal.Body>
-        <Form onSubmit={handleSubmit} className="mb-4 p-3 bg-light rounded-3">
-          <Row className="g-2 align-items-end">
-            <Col xs={12} md={5}>
+        {error   && <Alert variant="danger"  className="small py-2">{error}</Alert>}
+        {success && <Alert variant="success" className="small py-2">{success}</Alert>}
+
+        {/* ── Form tambah / edit ── */}
+        <div className="border rounded-3 p-3 mb-3 bg-light">
+          <h6 className="mb-3 fw-semibold">
+            {editId ? "Edit Wilayah" : "Tambah Wilayah Baru"}
+          </h6>
+          <div className="row g-2">
+            <div className="col-md-6">
               <Form.Label className="small fw-semibold">Nama Wilayah</Form.Label>
               <Form.Control
-                type="text"
-                placeholder="cth. Tambakharjo"
+                size="sm"
+                placeholder="cth: Tambakharjo"
                 value={form.nama_wilayah}
-                onChange={(e) => setForm({ ...form, nama_wilayah: e.target.value })}
-                required
+                onChange={e => setForm(f => ({ ...f, nama_wilayah: e.target.value }))}
               />
-            </Col>
-            <Col xs={8} md={4}>
+            </div>
+            <div className="col-md-4">
               <Form.Label className="small fw-semibold">Tinggi Tanah (m)</Form.Label>
               <Form.Control
+                size="sm"
                 type="number"
                 step="0.01"
-                placeholder="cth. 0.45"
+                min="0"
+                max="10"
+                placeholder="cth: 0.45"
                 value={form.tinggi_tanah}
-                onChange={(e) => setForm({ ...form, tinggi_tanah: e.target.value })}
-                required
+                onChange={e => setForm(f => ({ ...f, tinggi_tanah: e.target.value }))}
               />
-            </Col>
-            <Col xs={4} md={3} className="d-flex gap-2">
-              <Button type="submit" variant="primary" disabled={submitting} className="flex-fill">
-                {submitting ? <Spinner size="sm" animation="border" /> : isEditing ? "Update" : "Tambah"}
+              <Form.Text className="text-muted">Dalam meter dari MSL</Form.Text>
+            </div>
+            <div className="col-md-2 d-flex align-items-end gap-1">
+              <Button size="sm" variant="primary" onClick={handleSave} disabled={saving} className="w-100">
+                {saving ? <Spinner size="sm" animation="border" /> : editId ? "Simpan" : "Tambah"}
               </Button>
-              {isEditing && (
-                <Button variant="outline-secondary" onClick={resetForm} type="button">
-                  Batal
-                </Button>
+              {editId && (
+                <Button size="sm" variant="outline-secondary" onClick={handleCancelEdit}>✕</Button>
               )}
-            </Col>
-          </Row>
-          {error && <Alert variant="danger" className="mt-2 mb-0 py-2">{error}</Alert>}
-        </Form>
+            </div>
+          </div>
+        </div>
 
+        {/* ── Tabel daftar wilayah ── */}
         {loading ? (
           <div className="text-center py-4">
-            <Spinner animation="border" variant="primary" />
+            <Spinner animation="border" size="sm" className="me-2" />
+            <span className="text-muted small">Memuat...</span>
           </div>
-        ) : data.length === 0 ? (
-          <Alert variant="secondary">Belum ada wilayah terdaftar.</Alert>
         ) : (
           <div className="table-responsive">
-            <Table hover size="sm" className="align-middle">
-              <thead>
+            <Table size="sm" hover className="align-middle mb-0">
+              <thead className="table-light">
                 <tr>
+                  <th>#</th>
                   <th>Nama Wilayah</th>
-                  <th>Tinggi Tanah (m)</th>
-                  <th className="text-end">Aksi</th>
+                  <th>Tinggi Tanah</th>
+                  <th>Geometri</th>
+                  <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
-                {data.map((item) => (
-                  <tr key={item.id}>
+                {list.length === 0 ? (
+                  <tr><td colSpan={5} className="text-center text-muted py-3">Belum ada wilayah.</td></tr>
+                ) : list.map((item, idx) => (
+                  <tr key={item.id} className={editId === item.id ? "table-primary" : ""}>
+                    <td>{idx + 1}</td>
                     <td className="fw-semibold">{item.nama_wilayah}</td>
-                    <td>{item.tinggi_tanah}</td>
-                    <td className="text-end">
-                      <Button size="sm" variant="outline-primary" className="me-2" onClick={() => handleEdit(item)}>
-                        Edit
-                      </Button>
-                      <Button size="sm" variant="outline-danger" onClick={() => handleDelete(item.id)}>
-                        Hapus
-                      </Button>
+                    <td>{item.tinggi_tanah} m</td>
+                    <td>
+                      <Badge bg={item.has_geojson ? "success" : "secondary"} className="small">
+                        {item.has_geojson ? "Ada" : "Belum"}
+                      </Badge>
+                    </td>
+                    <td>
+                      <div className="d-flex gap-1">
+                        <Button size="sm" variant="outline-primary" onClick={() => handleEdit(item)}>
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline-danger"
+                          disabled={deleting === item.id}
+                          onClick={() => handleDelete(item)}
+                        >
+                          {deleting === item.id ? <Spinner size="sm" animation="border" /> : "Hapus"}
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -164,9 +188,7 @@ export default function ModalWilayahRob({ show, onHide, onDataChanged }) {
       </Modal.Body>
 
       <Modal.Footer>
-        <Button variant="secondary" onClick={onHide}>
-          Tutup
-        </Button>
+        <Button variant="secondary" onClick={onHide}>Tutup</Button>
       </Modal.Footer>
     </Modal>
   );

@@ -164,3 +164,16 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 Route::post('/admin/pasang-surut/generate-prediksi', [PasangSurutController::class, 'generatePrediksi']);
+
+Route::get('/wilayah-rob',      [WilayahRobController::class, 'index']);
+Route::get('/peta/rob-data',    [WilayahRobController::class, 'petaData']);
+ 
+// ── Admin (sesuaikan middleware dengan yang dipakai di route admin lain) ──
+Route::prefix('admin/wilayah-rob')->group(function () {
+    Route::get('/',                          [WilayahRobController::class, 'adminIndex']);
+    Route::post('/',                         [WilayahRobController::class, 'store']);
+    Route::put('/{wilayahRob}',              [WilayahRobController::class, 'update']);
+    Route::delete('/{wilayahRob}',           [WilayahRobController::class, 'destroy']);
+    Route::put('/{wilayahRob}/geojson',      [WilayahRobController::class, 'updateGeojson']);
+});
+ 
