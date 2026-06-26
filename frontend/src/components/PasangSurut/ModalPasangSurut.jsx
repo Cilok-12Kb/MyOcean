@@ -48,9 +48,9 @@ export default function ModalPasangSurut({ show, onHide, onDataChanged }) {
   function handleEdit(item) {
     setForm({
       id: item.id,
-      tanggal: item.tanggal,
-      jam: item.jam,
-      tide_height_digital: item.tide_height_digital,
+      tanggal: item.tanggal ?? "",   // tidak perlu split("T")[0] lagi
+      jam: item.jam ?? "",
+      tide_height_digital: item.tide_height_digital ?? "",
       tide_height_manual: item.tide_height_manual ?? "",
       tide_height_prediction: item.tide_height_prediction ?? "",
     });

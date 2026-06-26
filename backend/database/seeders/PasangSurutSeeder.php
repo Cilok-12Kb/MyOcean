@@ -4,89 +4,100 @@ namespace Database\Seeders;
 
 use App\Models\PasangSurut;
 use Illuminate\Database\Seeder;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class PasangSurutSeeder extends Seeder
 {
     /**
-     * Generate data dummy "observasi" pasang surut untuk 30 hari berturut-turut
-     * SEBELUM tanggal 21 Juni 2026 (yaitu 22 Mei - 20 Juni 2026, 720 baris:
-     * 30 hari x 24 jam), supaya ada riwayat panjang yang representatif untuk
-     * fitur "Generate Prediksi" memprediksi tanggal 21 Juni ke depan.
+     * Mengisi data "observasi" pasang surut dari dataset NYATA
+     * (1 Januari 2023 s.d. 24 Juni 2026, 29.487 baris per jam),
+     * BUKAN data dummy/generate seperti seeder sebelumnya.
      *
-     * Kolom yang diisi: tide_height_digital, tide_height_manual.
-     * (Kolom 'status' tidak disentuh — itu generated column MySQL, otomatis
-     * menyesuaikan nilai tide_height_digital.)
-     * Kolom tide_height_prediction SENGAJA dibiarkan NULL — itu khusus untuk
-     * hasil model BiLSTM nanti lewat fitur "Generate Prediksi", bukan data
-     * observasi seperti yang di-generate seeder ini.
+     * Sumber: dataset_pasut_2023_2025.xlsx (kolom Tanggal, Jam, Manual,
+     * Sensor). Kolom Manual & Sensor pada file asli dalam satuan CENTIMETER,
+     * sudah dikonversi ke METER (dibagi 100, dibulatkan 2 desimal) supaya
+     * konsisten dengan kolom tide_height_digital / tide_height_manual yang
+     * ada di database (contoh nilai existing: 1.35, 1.59, dst).
      *
-     * POLA NILAI — dirancang menyerupai pasang surut nyata (bukan sinusoidal
-     * berulang identik tiap hari), terdiri dari 3 komponen:
+     * Mapping kolom dataset -> kolom tabel:
+     * - Tanggal -> tanggal
+     * - Jam ("02:00" dst)   -> jam (diambil jam-nya saja, integer 0-23)
+     * - Sensor (cm) / 100   -> tide_height_digital (pembacaan alat digital)
+     * - Manual (cm) / 100   -> tide_height_manual  (pembacaan manual/staff)
      *
-     * 1. Komponen semi-diurnal (dominan): osilasi ~12 jam, mensimulasikan
-     *    siklus pasang-surut harian (2x pasang & 2x surut per hari).
-     * 2. Modulasi purnama-perbani: amplitudo komponen di atas membesar &
-     *    mengecil mengikuti siklus ~14.5 hari (mirip siklus bulan: pasang
-     *    lebih tinggi saat purnama/perbani, lebih rendah di antaranya).
-     * 3. Noise acak kecil: variasi harian yang tidak sempurna mengikuti
-     *    rumus matematis murni, seperti pengukuran sungguhan.
+     * Kolom yang SENGAJA TIDAK diisi:
+     * - status: kolom generated MySQL, otomatis terisi sendiri mengikuti
+     *   nilai tide_height_digital. Jangan disentuh dari seeder.
+     * - tide_height_prediction: khusus untuk hasil model BiLSTM lewat fitur
+     *   "Generate Prediksi", bukan bagian dari data observasi historis ini,
+     *   jadi dibiarkan NULL.
      *
-     * PENTING — rentang nilai:
-     * Model BiLSTM dilatih dengan data dalam rentang 60-212 cm (0.60-2.12 m).
-     * Parameter di bawah ini SENGAJA diatur supaya hasil akhir tetap di
-     * sekitar 67-202 cm, dengan margin aman dari batas training. Jangan
-     * naikkan $amplitudoSemidiurnal atau $amplitudoPurnama tanpa mengecek
-     * ulang rentang scaler_fitur.pkl yang dipakai model-service, karena
-     * nilai di luar rentang training menyebabkan prediksi tidak akurat.
+     * Catatan data: dari 29.487 baris, ada 5 baris dengan nilai Sensor yang
+     * janggal (4 baris melonjak jauh di atas rentang normal ~60-222 cm, dan
+     * 1 baris bernilai 0) — kemungkinan glitch alat sensor sungguhan, tetap
+     * dimasukkan apa adanya sebagai data observasi historis (tidak dibersihkan
+     * di seeder ini, supaya proses import benar-benar 1:1 dengan file asli).
+     *
+     * File CSV (database/seeders/data/pasut_surut.csv) sudah dalam bentuk
+     * final: tanggal, jam, tide_height_digital, tide_height_manual.
+     * Insert dilakukan per-chunk (1000 baris) di dalam transaction supaya
+     * aman & ringan untuk ~30 ribu baris.
      */
     public function run(): void
     {
         PasangSurut::truncate();
 
-        $jumlahHari   = 30;
-        $tanggalAkhir = Carbon::parse('2026-06-20'); // hari terakhir data (sehari sebelum target prediksi)
-        $tanggalMulai = $tanggalAkhir->copy()->subDays($jumlahHari - 1); // 2026-05-22
+        $csvPath = database_path('seeders/data/dataset_pasut_2026.csv');
 
-        // --- Parameter pola (satuan meter) ---
-        $base                  = 1.35;   // titik tengah, dekat (0.60 + 2.12) / 2
-        $amplitudoSemidiurnal  = 0.45;   // amplitudo dasar osilasi 12 jam
-        $amplitudoPurnama      = 0.20;   // seberapa besar amplitudo di atas berubah mengikuti siklus bulan
-        $periodePurnamaJam     = 14.5 * 24; // ~14.5 hari dalam jam
-        $noiseMaksCm           = 2;      // noise acak +/- 2 cm
-
-        for ($hari = 0; $hari < $jumlahHari; $hari++) {
-            $tanggal = $tanggalMulai->copy()->addDays($hari);
-
-            for ($jam = 0; $jam < 24; $jam++) {
-                // Indeks waktu kontinu lintas hari (jam ke-0 dari awal periode 30 hari)
-                $indexWaktu = ($hari * 24) + $jam;
-
-                // Modulasi purnama-perbani: amplitudo semidiurnal naik-turun mengikuti siklus ~14.5 hari
-                $modulasi = 1 + ($amplitudoPurnama / $amplitudoSemidiurnal)
-                    * sin((2 * M_PI * $indexWaktu) / $periodePurnamaJam);
-
-                // Komponen semi-diurnal: osilasi utama periode 12 jam
-                $semidiurnal = $amplitudoSemidiurnal * $modulasi * sin((2 * M_PI * $indexWaktu) / 12);
-
-                $noise   = mt_rand(-$noiseMaksCm * 100, $noiseMaksCm * 100) / 10000; // ke meter
-                $digital = round($base + $semidiurnal + $noise, 2);
-                $manual  = round($digital + (mt_rand(-2, 2) / 100), 2);
-
-                PasangSurut::create([
-                    'tanggal'                => $tanggal->toDateString(),
-                    'jam'                    => $jam,
-                    'tide_height_digital'    => $digital,
-                    'tide_height_manual'     => $manual,
-                    'tide_height_prediction' => null,
-                ]);
-            }
+        if (! file_exists($csvPath)) {
+            $this->command->error("File CSV tidak ditemukan: {$csvPath}");
+            return;
         }
 
-        $this->command->info(
-            "PasangSurutSeeder: berhasil generate "
-            . ($jumlahHari * 24)
-            . " baris data ({$tanggalMulai->toDateString()} s.d. {$tanggalAkhir->toDateString()})."
-        );
+        $handle = fopen($csvPath, 'r');
+        $header = fgetcsv($handle); // buang baris header: tanggal,jam,tide_height_digital,tide_height_manual
+
+        $chunkSize = 1000;
+        $buffer    = [];
+        $total     = 0;
+        $now       = now();
+
+        DB::beginTransaction();
+
+        try {
+            while (($row = fgetcsv($handle)) !== false) {
+                [$tanggal, $jam, $digital, $manual] = $row;
+
+                $buffer[] = [
+                    'tanggal'                => $tanggal,
+                    'jam'                    => (int) $jam,
+                    'tide_height_digital'    => (float) $digital,
+                    'tide_height_manual'     => (float) $manual,
+                    'tide_height_prediction' => null,
+                    'created_at'             => $now,
+                    'updated_at'             => $now,
+                ];
+
+                if (count($buffer) >= $chunkSize) {
+                    PasangSurut::insert($buffer);
+                    $total += count($buffer);
+                    $buffer = [];
+                }
+            }
+
+            if (! empty($buffer)) {
+                PasangSurut::insert($buffer);
+                $total += count($buffer);
+            }
+
+            fclose($handle);
+            DB::commit();
+        } catch (\Throwable $e) {
+            fclose($handle);
+            DB::rollBack();
+            throw $e;
+        }
+
+        $this->command->info("PasangSurutSeeder: berhasil import {$total} baris data nyata (2023-01-01 s.d. 2026-06-24) dari pasut_surut.csv.");
     }
 }

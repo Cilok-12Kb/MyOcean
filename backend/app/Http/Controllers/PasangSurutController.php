@@ -147,106 +147,189 @@ class PasangSurutController extends Controller
         ]);
 
         $tanggalTarget = Carbon::parse($validated['tanggal'])->startOfDay();
-        $lookbackJam   = 26; // LOOKBACK (24) + buffer 2 baris untuk shift(1)/shift(2)
 
-        // Ambil baris dengan tanggal < tanggal target, urut terbaru dulu,
-        // batasi $lookbackJam baris, lalu balik urutan jadi naik (lama → baru).
-        $riwayat = PasangSurut::where('tanggal', '<', $tanggalTarget->toDateString())
-            ->orderByDesc('tanggal')
-            ->orderByDesc('jam')
-            ->limit($lookbackJam)
-            ->get()
-            ->sortBy(function ($row) {
-                return $row->tanggal->toDateString() . ' ' . str_pad($row->jam, 2, '0', STR_PAD_LEFT);
-            })
-            ->values();
+        // ============================
+        // MODEL BARU
+        // LOOKBACK = 48
+        // Lag maksimum = 24 jam
+        // Maka perlu 72 jam historis
+        // ============================
 
-        if ($riwayat->count() < $lookbackJam) {
+        $LOOKBACK = 48;
+        $LAG_MAX  = 24;
+        $TOTAL_HISTORY = $LOOKBACK + $LAG_MAX;
+
+        // ambil tepat 72 jam sebelum tanggal target
+        $mulai = $tanggalTarget->copy()->subHours($TOTAL_HISTORY);
+
+        $selesai = $tanggalTarget->copy()->subHour();
+
+        $riwayat = PasangSurut::where(function ($q) use ($mulai, $selesai) {
+
+            $q->whereRaw("
+                TIMESTAMP(tanggal, MAKETIME(jam,0,0))
+                BETWEEN ? AND ?
+            ", [
+                $mulai->format('Y-m-d H:i:s'),
+                $selesai->format('Y-m-d H:i:s')
+            ]);
+
+        })
+        ->orderBy('tanggal')
+        ->orderBy('jam')
+        ->get();
+
+        if ($riwayat->count() != $TOTAL_HISTORY) {
+
             return response()->json([
-                'message' => "Data historis sebelum {$tanggalTarget->toDateString()} belum cukup. "
-                    . "Tersedia {$riwayat->count()} baris, butuh minimal {$lookbackJam} baris berurutan "
-                    . "(idealnya 2 hari penuh: " . $tanggalTarget->copy()->subDays(2)->toDateString()
-                    . " dan " . $tanggalTarget->copy()->subDay()->toDateString() . ").",
-            ], 422);
+                'message' =>
+                    "Data historis tidak lengkap.\n\n".
+                    "Model membutuhkan {$TOTAL_HISTORY} jam berturut-turut.\n".
+                    "Didapat {$riwayat->count()} jam."
+            ],422);
+
         }
 
-        // Pastikan baris terakhir riwayat persis jam 23:00 hari sebelum tanggal target,
-        // supaya prediksi pertama yang dihasilkan adalah jam 00:00 tanggal target.
-        $barisTerakhir     = $riwayat->last();
-        $expectedDatetime  = $tanggalTarget->copy()->subHour(); // jam 23:00 H-1
-        $actualDatetime    = Carbon::parse($barisTerakhir->tanggal->toDateString())->setTime($barisTerakhir->jam, 0);
+        // ============================
+        // cek tidak ada jam yang hilang
+        // ============================
 
-        if (!$actualDatetime->equalTo($expectedDatetime)) {
-            return response()->json([
-                'message' => "Data riwayat tidak berurutan sampai tepat sebelum {$tanggalTarget->toDateString()} 00:00. "
-                    . "Baris terakhir yang ditemukan: {$actualDatetime->format('Y-m-d H:i')}. "
-                    . "Pastikan tidak ada jam yang bolong pada data 2 hari sebelum tanggal target.",
-            ], 422);
+        $expected = $mulai->copy();
+
+        foreach ($riwayat as $row) {
+
+            $actual = Carbon::parse(
+                $row->tanggal->toDateString()
+                .' '
+                .sprintf('%02d:00:00',$row->jam)
+            );
+
+            if (!$actual->equalTo($expected)) {
+
+                return response()->json([
+                    'message' =>
+                        "Data tidak berurutan.\n".
+                        "Seharusnya ada data ".
+                        $expected->format('Y-m-d H:i').
+                        " tetapi ditemukan ".
+                        $actual->format('Y-m-d H:i')
+                ],422);
+
+            }
+
+            $expected->addHour();
+
         }
+
+        // ============================
+        // kirim ke Python
+        // ============================
 
         $payload = [
+
             'riwayat' => $riwayat->map(function ($row) {
+
                 return [
-                    'datetime' => $row->tanggal->toDateString() . ' ' . str_pad($row->jam, 2, '0', STR_PAD_LEFT) . ':00:00',
-                    // PENTING: model dilatih dengan data dalam satuan CENTIMETER
-                    // (60-212 cm), tapi tabel pasang_surut menyimpan dalam METER.
-                    // Konversi *100 di sini (meter -> cm) sebelum dikirim ke
-                    // model-service, supaya konsisten dengan rentang training.
-                    // Konversi sebaliknya (/100, cm -> meter) sudah ada di bagian
-                    // bawah method ini saat menyimpan HASIL prediksi.
-                    'manual'   => (float) ($row->tide_height_manual ?? $row->tide_height_digital) * 100,
-                    'sensor'   => (float) $row->tide_height_digital * 100,
+
+                    'datetime' =>
+                        $row->tanggal->toDateString().
+                        ' '.
+                        sprintf('%02d:00:00',$row->jam),
+
+                    'manual' =>
+                        (float)(
+                            $row->tide_height_manual
+                            ?? $row->tide_height_digital
+                        ) * 100,
+
+                    'sensor' =>
+                        (float)$row->tide_height_digital * 100,
+
                 ];
+
             })->values(),
-            'jumlah_jam_prediksi' => 24,
+
         ];
 
-        // Panggil Python model service
         try {
+
             $response = Http::withHeaders([
                     'X-API-Key' => config('services.model_service.api_key'),
                 ])
                 ->timeout(60)
-                ->post(config('services.model_service.url') . '/predict', $payload);
+                ->post(
+                    config('services.model_service.url').'/predict',
+                    $payload
+                );
+
         } catch (\Exception $e) {
-            Log::error('Gagal menghubungi model service: ' . $e->getMessage());
+
+            Log::error($e->getMessage());
+
             return response()->json([
-                'message' => 'Tidak bisa terhubung ke model prediksi. Pastikan model service sedang berjalan.',
-            ], 503);
+                'message' =>
+                    'Tidak dapat terhubung ke model service.'
+            ],503);
+
         }
 
         if (!$response->successful()) {
-            Log::error('Model service error: ' . $response->body());
+
+            Log::error($response->body());
+
             return response()->json([
-                'message' => 'Model prediksi gagal memproses data: ' . ($response->json('detail') ?? 'Unknown error'),
-            ], 502);
+                'message' =>
+                    'Model error : '.
+                    ($response->json('detail')
+                    ?? $response->body())
+            ],502);
+
         }
 
         $hasil = $response->json('hasil');
 
-        // PENTING: model BiLSTM dilatih dengan dataset dalam satuan CENTIMETER,
-        // tapi tabel pasang_surut di sistem ini memakai satuan METER (lihat
-        // tide_height_digital/manual yang nilainya ~0.5-2.5, bukan ~50-250).
-        // Konversi cm → meter sebelum disimpan supaya konsisten dengan data lain
-        // dan tampil benar di grafik (yang skalanya 0-3 meter).
         $disimpan = 0;
-        foreach ($hasil as $jamPrediksi) {
-            $tanggal = substr($jamPrediksi['datetime'], 0, 10);
-            $jam     = $jamPrediksi['jam'];
-            $prediksiMeter = round($jamPrediksi['prediksi_cm'] / 100, 3);
+
+        foreach ($hasil as $prediksi) {
+
+            $tanggal = substr($prediksi['datetime'],0,10);
+
+            $jam = $prediksi['jam'];
+
+            $meter = round(
+                $prediksi['prediksi_cm']/100,
+                3
+            );
 
             PasangSurut::updateOrCreate(
-                ['tanggal' => $tanggal, 'jam' => $jam],
-                ['tide_height_prediction' => $prediksiMeter]
+
+                [
+                    'tanggal'=>$tanggal,
+                    'jam'=>$jam,
+                ],
+
+                [
+                    'tide_height_prediction'=>$meter,
+                ]
+
             );
+
             $disimpan++;
+
         }
 
         return response()->json([
-            'message'        => "Berhasil generate {$disimpan} data prediksi untuk {$tanggalTarget->toDateString()}.",
-            'count'          => $disimpan,
-            'tanggal_target' => $tanggalTarget->toDateString(),
-            'data'           => $hasil,
+
+            'message' =>
+                "Berhasil generate {$disimpan} prediksi.",
+
+            'count'=>$disimpan,
+
+            'tanggal_target'=>$tanggalTarget->toDateString(),
+
+            'data'=>$hasil
+
         ]);
+
     }
 }

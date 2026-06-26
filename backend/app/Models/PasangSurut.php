@@ -17,7 +17,7 @@ class PasangSurut extends Model
     ];
 
     protected $casts = [
-        'tanggal'                => 'date',
+        'tanggal' => 'date:Y-m-d',   // ← format-only cast, TIDAK dikonversi timezone
         'jam'                    => 'integer',
         'tide_height_digital'    => 'float',
         'tide_height_manual'     => 'float',
