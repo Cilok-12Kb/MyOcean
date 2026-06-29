@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PasangSurutController;
 use App\Http\Controllers\WilayahRobController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\Admin\ForgotPasswordController;
 
 // ── Test ──────────────────────────────────────────────────────────────────────
 Route::get('/test', function () {
@@ -16,7 +17,7 @@ Route::get('/test', function () {
 });
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-Route::post('/ocean-control-center/login', [AuthController::class, 'login']);
+Route::post('/MyOcean-Endmin', [AuthController::class, 'login']);
 
 // ── Protected routes (semua user yang sudah login) ────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
@@ -132,3 +133,18 @@ Route::prefix('admin/wilayah-rob')->group(function () {
 
 
 Route::post('/chat', [ChatController::class, 'chat']);
+
+Route::post(
+    '/MyOcean-Endmin/forgot-password',
+    [ForgotPasswordController::class, 'sendResetLink']
+);
+
+Route::get(
+    '/MyOcean-Endmin/reset-password/validate',
+    [ForgotPasswordController::class, 'validateToken']
+);
+
+Route::post(
+    '/MyOcean-Endmin/reset-password',
+    [ForgotPasswordController::class, 'resetPassword']
+);
