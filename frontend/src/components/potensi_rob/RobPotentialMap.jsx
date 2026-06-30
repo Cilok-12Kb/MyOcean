@@ -1,4 +1,5 @@
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { Badge } from "react-bootstrap";
 import L from "leaflet";
 import "../../styles/RobPotentialMap.css";
 
@@ -11,6 +12,13 @@ const pinIcon = L.divIcon({
   iconAnchor: [13, 26],
   popupAnchor: [0, -24],
 });
+
+const RISK_VARIANT = {
+  low: "success",
+  medium: "warning",
+  warning: "warning",
+  danger: "danger",
+};
 
 function getRiskLevel(item) {
   const value = Number(item.tide_height || item.kenaikan_air || 0);
@@ -48,30 +56,43 @@ function InfoPopup({ location }) {
   const riskLevel = getRiskLevel(location);
 
   return (
-    <div className="rob-map-popup">
-      <div className="popup-date">
+    <div className="rob-map-popup p-3">
+      <Badge
+        bg="primary-subtle"
+        text="primary"
+        className="d-block mx-auto w-fit-content rounded-pill px-3 py-2 mb-3 fw-semibold"
+        style={{ fontSize: "11px" }}
+      >
         {formatDate(location.datetime || location.local_datetime)} WIB
-      </div>
+      </Badge>
 
-      <h6>{location.lokasi || location.desa || "-"}</h6>
+      <h6 className="fw-bold text-center mb-3">
+        {location.lokasi || location.desa || "-"}
+      </h6>
 
-      <div className="info-row">
-        <span>Pasang/Surut</span>
-        <strong>{location.status || "-"}</strong>
-      </div>
+      <div className="d-grid gap-2">
+        <div className="d-flex justify-content-between align-items-center bg-light rounded-3 px-3 py-2">
+          <span className="text-secondary small">Pasang/Surut</span>
+          <strong className="small">{location.status || "-"}</strong>
+        </div>
 
-      <div className="info-row">
-        <span>Kenaikan Air</span>
-        <strong>
-          {location.tide_height || location.kenaikan_air || 0} m
-        </strong>
-      </div>
+        <div className="d-flex justify-content-between align-items-center bg-light rounded-3 px-3 py-2">
+          <span className="text-secondary small">Kenaikan Air</span>
+          <strong className="small">
+            {location.tide_height || location.kenaikan_air || 0} m
+          </strong>
+        </div>
 
-      <div className="info-row">
-        <span>Potensi Rob</span>
-        <span className={`risk-status ${riskLevel}`}>
-          {getRiskText(riskLevel)}
-        </span>
+        <div className="d-flex justify-content-between align-items-center pt-2 mt-1 border-top">
+          <span className="text-secondary small">Potensi Rob</span>
+          <Badge
+            bg={RISK_VARIANT[riskLevel]}
+            className="rounded-pill px-3 py-1 text-uppercase"
+            style={{ fontSize: "10px", letterSpacing: "0.3px" }}
+          >
+            {getRiskText(riskLevel)}
+          </Badge>
+        </div>
       </div>
     </div>
   );

@@ -22,6 +22,7 @@
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  position: relative;
 }
 
 .pin-dot::after {
@@ -36,57 +37,11 @@
 }
 
 .rob-map-popup {
-  width: 280px;
-  padding: 16px;
-  background: white;
+  width: 260px;
   font-size: 13px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-.popup-date {
+.rob-map-popup .w-fit-content {
   width: fit-content;
-  margin: 0 auto 14px;
-  padding: 8px 18px;
-  border-radius: 7px;
-  background: #eaf1ff;
-  color: #0084ff;
-  font-weight: 600;
-}
-
-.rob-map-popup h6 {
-  margin-bottom: 12px;
-  font-weight: 800;
-  color: #111;
-}
-
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 12px;
-  background: #eaf1ff;
-  border-bottom: 1px solid #7bbcff;
-  color: #0084ff;
-}
-
-.risk-status {
-  min-width: 80px;
-  height: 18px;
-  font-size: 0;
-  border: 1px solid #333;
-}
-
-.risk-status.low {
-  background: #23c000;
-}
-
-.risk-status.medium {
-  background: #ffff00;
-}
-
-.risk-status.warning {
-  background: #ffb000;
-}
-
-.risk-status.danger {
-  background: #ff0000;
 }
