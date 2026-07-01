@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import bmkgLogo from "../assets/images/Logo.png";
+import iconAi from "../assets/images/icon_ai.jpg";
 
 export default function PublicNavbar() {
 
@@ -204,10 +205,23 @@ export default function PublicNavbar() {
                   px-4
                   d-none
                   d-lg-inline-flex
+                  align-items-center
+                  gap-2
                 "
                 to="/marin-minamo"
               >
-                🤖 Marin Minamo
+                <img
+                  src={iconAi}
+                  alt="Marin Minamo"
+                  style={{
+                    width: "20px",
+                    height: "20px",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    flexShrink: 0,
+                  }}
+                />
+                Marin Minamo
               </Link>
 
               {/* MOBILE BUTTON */}
@@ -287,11 +301,22 @@ export default function PublicNavbar() {
                 <div className="mt-4 d-flex justify-content-center">
 
                   <Link
-                    className="btn btn-outline-primary rounded-3 px-4"
+                    className="btn btn-outline-primary rounded-3 px-4 d-inline-flex align-items-center gap-2"
                     to="/marin-minamo"
                     onClick={() => setIsOpen(false)}
                   >
-                    🤖 Marin Minamo
+                    <img
+                      src={iconAi}
+                      alt="Marin Minamo"
+                      style={{
+                        width: "20px",
+                        height: "20px",
+                        borderRadius: "50%",
+                        objectFit: "cover",
+                        flexShrink: 0,
+                      }}
+                    />
+                    Marin Minamo
                   </Link>
 
                 </div>

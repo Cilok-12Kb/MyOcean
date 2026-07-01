@@ -11,6 +11,18 @@ use Carbon\Carbon;
 
 class PasangSurutController extends Controller
 {
+    // ── Offset MSL terhadap Chart Datum/LWS stasiun pasut yang dipakai. ──
+    // "tide_height_digital" direferensikan ke Chart Datum (0 = air terendah
+    // teoritis stasiun tsb), sedangkan "tinggi_tanah" direferensikan ke MSL
+    // (standar topografi nasional). Nilai ini WAJIB dikurangkan dari
+    // tinggi_air sebelum dibandingkan dengan tinggi_tanah, supaya kedua
+    // nilai berada dalam datum yang sama.
+    //
+    // Harus SAMA dengan MSL_VALUE di WilayahRobController dan di frontend
+    // (src/utils/tideHelpers.js). Idealnya dipindah ke config/env supaya
+    // hanya didefinisikan satu kali dan tidak berisiko out-of-sync.
+    const MSL_VALUE = 1.5; // meter
+
     // Untuk grafik — ambil 24 data (jam 0-23) sesuai tanggal yang dipilih
     public function index(Request $request)
     {
@@ -45,12 +57,16 @@ class PasangSurutController extends Controller
         $wilayah = WilayahRob::all();
 
         $result = $wilayah->map(function ($w) use ($air) {
-            $tinggiRob = round($air->tide_height_digital - $w->tinggi_tanah, 2);
+            // Konversi tinggi air dari Chart Datum ke MSL dulu, baru
+            // dibandingkan dengan tinggi_tanah (yang sudah dalam MSL).
+            $tinggiAirMsl = $air->tide_height_digital - self::MSL_VALUE;
+            $tinggiRob    = round($tinggiAirMsl - $w->tinggi_tanah, 2);
 
             return [
                 'nama_wilayah'        => $w->nama_wilayah,
                 'tinggi_tanah'        => $w->tinggi_tanah,
-                'tide_height_digital' => $air->tide_height_digital,
+                'tide_height_digital' => $air->tide_height_digital, // raw value, skala Chart Datum
+                'tide_height_msl'     => round($tinggiAirMsl, 2),   // sudah dikonversi ke skala MSL
                 'tinggi_rob'          => max($tinggiRob, 0),
                 'tergenang'           => $tinggiRob > 0,
                 'status'              => $air->status,
@@ -165,16 +181,14 @@ class PasangSurutController extends Controller
         $selesai = $tanggalTarget->copy()->subHour();
 
         $riwayat = PasangSurut::where(function ($q) use ($mulai, $selesai) {
-
-            $q->whereRaw("
+             $q->whereRaw("
                 TIMESTAMP(tanggal, MAKETIME(jam,0,0))
                 BETWEEN ? AND ?
             ", [
                 $mulai->format('Y-m-d H:i:s'),
                 $selesai->format('Y-m-d H:i:s')
             ]);
-
-        })
+         })
         ->orderBy('tanggal')
         ->orderBy('jam')
         ->get();
@@ -187,7 +201,6 @@ class PasangSurutController extends Controller
                     "Model membutuhkan {$TOTAL_HISTORY} jam berturut-turut.\n".
                     "Didapat {$riwayat->count()} jam."
             ],422);
-
         }
 
         // ============================
@@ -198,15 +211,15 @@ class PasangSurutController extends Controller
 
         foreach ($riwayat as $row) {
 
-            $actual = Carbon::parse(
+             $actual = Carbon::parse(
                 $row->tanggal->toDateString()
                 .' '
                 .sprintf('%02d:00:00',$row->jam)
             );
 
-            if (!$actual->equalTo($expected)) {
+             if (!$actual->equalTo($expected)) {
 
-                return response()->json([
+                 return response()->json([
                     'message' =>
                         "Data tidak berurutan.\n".
                         "Seharusnya ada data ".
@@ -214,11 +227,37 @@ class PasangSurutController extends Controller
                         " tetapi ditemukan ".
                         $actual->format('Y-m-d H:i')
                 ],422);
+             }
 
+             $expected->addHour();
+        }
+
+        // ============================
+        // cek nilai tinggi air tidak NULL
+        // ============================
+        // Baris bisa "ada" (lolos cek count & urutan di atas) tapi nilai
+        // tide_height_digital & tide_height_manual-nya NULL — ini terjadi
+        // kalau data jam tsb belum sempat diinput/disensor. Tanpa cek ini,
+        // (float) null akan diam-diam jadi 0 dan dikirim ke model sebagai
+        // tinggi air 0 cm, membuat prediksi jadi salah tanpa ada error.
+        $jamTidakLengkap = [];
+
+        foreach ($riwayat as $row) {
+            if (is_null($row->tide_height_digital) && is_null($row->tide_height_manual)) {
+                $jamTidakLengkap[] =
+                    $row->tanggal->toDateString().' '.sprintf('%02d:00', $row->jam);
             }
+        }
 
-            $expected->addHour();
-
+        if (!empty($jamTidakLengkap)) {
+            return response()->json([
+                'message' =>
+                    "Data belum lengkap.\n\n".
+                    "Tinggi air (digital & manual) masih kosong untuk ".
+                    count($jamTidakLengkap)." jam berikut:\n".
+                    implode(', ', $jamTidakLengkap).
+                    "\n\nMohon lengkapi data tersebut terlebih dahulu sebelum generate prediksi."
+            ], 422);
         }
 
         // ============================
@@ -226,34 +265,25 @@ class PasangSurutController extends Controller
         // ============================
 
         $payload = [
-
-            'riwayat' => $riwayat->map(function ($row) {
-
-                return [
-
-                    'datetime' =>
+             'riwayat' => $riwayat->map(function ($row) {
+                 return [
+                     'datetime' =>
                         $row->tanggal->toDateString().
                         ' '.
                         sprintf('%02d:00:00',$row->jam),
-
-                    'manual' =>
+                     'manual' =>
                         (float)(
                             $row->tide_height_manual
                             ?? $row->tide_height_digital
                         ) * 100,
-
-                    'sensor' =>
+                     'sensor' =>
                         (float)$row->tide_height_digital * 100,
-
-                ];
-
-            })->values(),
-
+                 ];
+             })->values(),
         ];
 
         try {
-
-            $response = Http::withHeaders([
+             $response = Http::withHeaders([
                     'X-API-Key' => config('services.model_service.api_key'),
                 ])
                 ->timeout(60)
@@ -261,29 +291,22 @@ class PasangSurutController extends Controller
                     config('services.model_service.url').'/predict',
                     $payload
                 );
-
         } catch (\Exception $e) {
-
-            Log::error($e->getMessage());
-
-            return response()->json([
+             Log::error($e->getMessage());
+             return response()->json([
                 'message' =>
                     'Tidak dapat terhubung ke model service.'
             ],503);
-
         }
 
         if (!$response->successful()) {
-
-            Log::error($response->body());
-
-            return response()->json([
+             Log::error($response->body());
+             return response()->json([
                 'message' =>
                     'Model error : '.
                     ($response->json('detail')
                     ?? $response->body())
             ],502);
-
         }
 
         $hasil = $response->json('hasil');
@@ -291,45 +314,32 @@ class PasangSurutController extends Controller
         $disimpan = 0;
 
         foreach ($hasil as $prediksi) {
-
-            $tanggal = substr($prediksi['datetime'],0,10);
-
-            $jam = $prediksi['jam'];
-
-            $meter = round(
+             $tanggal = substr($prediksi['datetime'],0,10);
+             $jam = $prediksi['jam'];
+             $meter = round(
                 $prediksi['prediksi_cm']/100,
                 3
             );
 
-            PasangSurut::updateOrCreate(
-
-                [
+             PasangSurut::updateOrCreate(
+                 [
                     'tanggal'=>$tanggal,
                     'jam'=>$jam,
                 ],
-
-                [
+                 [
                     'tide_height_prediction'=>$meter,
                 ]
-
             );
 
-            $disimpan++;
-
+             $disimpan++;
         }
 
         return response()->json([
-
-            'message' =>
+             'message' =>
                 "Berhasil generate {$disimpan} prediksi.",
-
-            'count'=>$disimpan,
-
-            'tanggal_target'=>$tanggalTarget->toDateString(),
-
-            'data'=>$hasil
-
+             'count'=>$disimpan,
+             'tanggal_target'=>$tanggalTarget->toDateString(),
+             'data'=>$hasil
         ]);
-
     }
 }

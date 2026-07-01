@@ -32,6 +32,15 @@
 #           MANUAL_MEAN_TRAINING -- WAJIB diisi dengan nilai yang sama
 #           seperti yang dipakai notebook preprocessing. Lihat catatan
 #           di bagian KONFIGURASI di bawah.
+#
+# PENAMBAHAN VALIDASI DATA (TERBARU):
+#   - Sebelum prediksi dijalankan, sistem sekarang memeriksa apakah
+#     data riwayat untuk hari TERAKHIR sudah lengkap sampai jam 23:00.
+#     Jika belum (misal baru sampai jam 18:00), endpoint akan menolak
+#     request dengan status 400 dan pesan notifikasi "Data belum lengkap"
+#     berisi sampai jam berapa data tersedia. Ini mencegah prediksi
+#     dijalankan dengan data hari berjalan yang masih parsial, yang bisa
+#     membuat fitur lag/rolling pada baris terakhir tidak representatif.
 
 import keras
 import os
@@ -54,6 +63,11 @@ SCALER_LABEL_PATH = os.getenv("SCALER_LABEL_PATH")
 LOOKBACK          = int(os.getenv("LOOKBACK", 73)) 
 HORIZON           = int(os.getenv("HORIZON", 24))
 INTERNAL_API_KEY  = os.getenv("INTERNAL_API_KEY")
+
+# Jam minimal yang harus tersedia pada hari terakhir riwayat agar
+# dianggap "lengkap". Bisa dioverride lewat env kalau suatu saat
+# kebutuhan berubah (misal data dikirim per-30-menit, dsb).
+JAM_LENGKAP_HARI_TERAKHIR = int(os.getenv("JAM_LENGKAP_HARI_TERAKHIR", 23))
 
 # FIX C: konstanta rata-rata Manual dari SELURUH dataset training,
 # dipakai untuk menghitung Residual_harmonik. Harus identik dengan
@@ -260,6 +274,38 @@ def hitung_fitur(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# ── Validasi kelengkapan data ────────────────────────────────────────────
+
+def validasi_kelengkapan_hari_terakhir(df: pd.DataFrame) -> None:
+    """
+    Memeriksa apakah data riwayat untuk hari TERAKHIR (berdasarkan
+    tanggal pada baris terakhir) sudah lengkap sampai jam yang
+    ditentukan (default 23:00).
+
+    Jika belum lengkap, lempar HTTPException 400 dengan pesan notifikasi
+    yang menyebutkan sampai jam berapa data tersedia, agar caller (FE)
+    bisa menampilkan notifikasi "Data belum lengkap" ke pengguna.
+
+    df harus punya kolom 'Datetime' bertipe datetime, urut waktu naik.
+    """
+    tanggal_terakhir   = df['Datetime'].iloc[-1].normalize()
+    data_hari_terakhir = df[df['Datetime'].dt.normalize() == tanggal_terakhir]
+    jam_tersedia        = set(data_hari_terakhir['Datetime'].dt.hour)
+
+    if JAM_LENGKAP_HARI_TERAKHIR not in jam_tersedia:
+        jam_maks = int(data_hari_terakhir['Datetime'].dt.hour.max())
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Data belum lengkap. Riwayat untuk tanggal "
+                f"{tanggal_terakhir.strftime('%Y-%m-%d')} baru tersedia "
+                f"sampai jam {jam_maks:02d}:00, belum mencapai jam "
+                f"{JAM_LENGKAP_HARI_TERAKHIR:02d}:00. Mohon lengkapi data "
+                f"terlebih dahulu sebelum melakukan prediksi."
+            )
+        )
+
+
 # ── Inference ─────────────────────────────────────────────────────────────
 
 def prediksi_multistep(df_fitur: pd.DataFrame) -> List[HasilJam]:
@@ -338,6 +384,12 @@ def predict(payload: PrediksiRequest, x_api_key: Optional[str] = Header(None)):
         'sensor'  : 'Sensor',
         'datetime': 'Datetime',
     })
+    df['Datetime'] = pd.to_datetime(df['Datetime'], format="%Y-%m-%d %H:%M:%S")
+    df = df.sort_values('Datetime').reset_index(drop=True)
+
+    # Tolak request kalau data hari terakhir belum lengkap sampai jam
+    # 23:00 (atau JAM_LENGKAP_HARI_TERAKHIR jika dikustomisasi via env).
+    validasi_kelengkapan_hari_terakhir(df)
 
     df_fitur = hitung_fitur(df)
     hasil    = prediksi_multistep(df_fitur)

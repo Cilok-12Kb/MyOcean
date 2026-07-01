@@ -9,6 +9,18 @@ use Carbon\Carbon;
 
 class WilayahRobController extends Controller
 {
+    // ── Offset MSL terhadap Chart Datum/LWS stasiun pasut yang dipakai. ──
+    // Data "tide_height_digital" dari tabel PasangSurut direferensikan ke
+    // Chart Datum (0 = air terendah teoritis stasiun tsb), sedangkan
+    // "tinggi_tanah" direferensikan ke MSL (standar topografi nasional).
+    // Nilai ini WAJIB dikurangkan dari tinggi_air sebelum dibandingkan
+    // dengan tinggi_tanah, supaya kedua nilai berada dalam datum yang sama.
+    //
+    // TODO: pindahkan ke config/env (atau kolom per-stasiun di DB kalau nanti
+    // multi-stasiun) supaya tidak hardcode dan tidak berisiko out-of-sync
+    // dengan MSL_VALUE di frontend (src/utils/tideHelpers.js).
+    const MSL_VALUE = 1.5; // meter
+
     // ── Publik: daftar wilayah untuk tabel di halaman peta ──
     public function index()
     {
@@ -33,12 +45,16 @@ class WilayahRobController extends Controller
             ->first();
 
         $result = $wilayah->map(function ($w) use ($air) {
-            $tinggiRob = 0;
-            $tinggiAir = null;
+            $tinggiRob    = 0;
+            $tinggiAir    = null;
+            $tinggiAirMsl = null;
 
             if ($air) {
-                $tinggiAir = $air->tide_height_digital;
-                $tinggiRob = max(round($tinggiAir - $w->tinggi_tanah, 2), 0);
+                $tinggiAir    = $air->tide_height_digital;
+                // Konversi tinggi air dari Chart Datum ke MSL dulu, baru
+                // dibandingkan dengan tinggi_tanah (yang sudah dalam MSL).
+                $tinggiAirMsl = $tinggiAir - self::MSL_VALUE;
+                $tinggiRob    = max(round($tinggiAirMsl - $w->tinggi_tanah, 2), 0);
             }
 
             // Decode geojson hanya kalau ada, biarkan null kalau belum diisi
@@ -48,14 +64,15 @@ class WilayahRobController extends Controller
             }
 
             return [
-                'id'           => $w->id,
-                'nama_wilayah' => $w->nama_wilayah,
-                'tinggi_tanah' => $w->tinggi_tanah,
-                'tinggi_air'   => $tinggiAir,
-                'tinggi_rob'   => $tinggiRob,
-                'tergenang'    => $tinggiRob > 0,
-                'geometry'     => $geometry, // null kalau belum ada GeoJSON
-                'data_air_at'  => $air ? ($air->tanggal->toDateString() . ' ' . str_pad($air->jam, 2, '0', STR_PAD_LEFT) . ':00') : null,
+                'id'            => $w->id,
+                'nama_wilayah'  => $w->nama_wilayah,
+                'tinggi_tanah'  => $w->tinggi_tanah,
+                'tinggi_air'    => $tinggiAir,     // raw value, skala Chart Datum (untuk display/referensi)
+                'tinggi_air_msl'=> $tinggiAirMsl,  // sudah dikonversi ke skala MSL (dipakai untuk kalkulasi)
+                'tinggi_rob'    => $tinggiRob,
+                'tergenang'     => $tinggiRob > 0,
+                'geometry'      => $geometry, // null kalau belum ada GeoJSON
+                'data_air_at'   => $air ? ($air->tanggal->toDateString() . ' ' . str_pad($air->jam, 2, '0', STR_PAD_LEFT) . ':00') : null,
             ];
         });
 
